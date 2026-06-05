@@ -1,0 +1,9 @@
+{
+  "promptTokenCount": 337,
+  "candidatesTokenCount": 1317,
+  "totalTokenCount": 1654,
+  "thoughtsTokenCount": 0,
+  "cachedContentTokenCount": 0,
+  "estimatedCostUsd": 0.039611,
+  "model": "gemini-2.5-flash-image"
+}

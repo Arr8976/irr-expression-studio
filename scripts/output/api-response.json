@@ -1,0 +1,39 @@
+{
+  "mode": "gemini",
+  "preset": {
+    "id": "wink",
+    "label": "윙크",
+    "emoji": "😉",
+    "auCodes": [
+      "AU46"
+    ],
+    "description": "한쪽 눈 윙크"
+  },
+  "prompt": "표정 변경 FACS AU46 Keep the same character identity, art style, colors, pose, clothing, and background. Change only the facial expression using these FACS Action Units: AU46 (Wink) Do not distort the face structure. Apply a clean expression change.",
+  "model": "gemini-2.5-flash-image",
+  "seed": 2124011640,
+  "seedLocked": false,
+  "seedSupported": true,
+  "usage": {
+    "promptTokenCount": 337,
+    "candidatesTokenCount": 1317,
+    "totalTokenCount": 1654,
+    "thoughtsTokenCount": 0,
+    "cachedContentTokenCount": 0,
+    "estimatedCostUsd": 0.039611,
+    "model": "gemini-2.5-flash-image"
+  },
+  "quota": {
+    "limit": 3,
+    "remaining": 2,
+    "used": 1
+  },
+  "credits": {
+    "dateKey": "2026-06-06",
+    "dailyLimit": 0,
+    "used": 0,
+    "balance": 0
+  },
+  "billingSource": "free",
+  "imageDataUrl": "[omitted]"
+}

@@ -31,8 +31,9 @@ export function attachSessionCookie(
   response: NextResponse,
   sessionId: string,
   isNew: boolean,
+  options?: { force?: boolean },
 ) {
-  if (!isNew) return;
+  if (!isNew && !options?.force) return;
 
   response.cookies.set(QUOTA_SESSION_COOKIE, sessionId, {
     httpOnly: true,
@@ -45,9 +46,16 @@ export function attachSessionCookie(
 
 export function jsonWithSessionCookie<T>(
   body: T,
-  init: { status?: number; sessionId: string; isNew: boolean },
+  init: {
+    status?: number;
+    sessionId: string;
+    isNew: boolean;
+    forceCookie?: boolean;
+  },
 ) {
   const response = NextResponse.json(body, { status: init.status ?? 200 });
-  attachSessionCookie(response, init.sessionId, init.isNew);
+  attachSessionCookie(response, init.sessionId, init.isNew, {
+    force: init.forceCookie,
+  });
   return response;
 }

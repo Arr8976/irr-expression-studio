@@ -43,7 +43,11 @@ export async function POST(request: NextRequest) {
         packageId: result.order.packageId,
         ...result.credits,
       },
-      { sessionId, isNew },
+      {
+        sessionId: result.order.sessionId,
+        isNew: false,
+        forceCookie: true,
+      },
     );
   } catch (error) {
     await markPaymentOrderFailed(orderId);

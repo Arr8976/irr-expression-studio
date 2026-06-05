@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getPaymentAvailability } from "@/lib/credit-checkout";
 import { createPaymentOrder } from "@/lib/payment-orders";
-import { getAppBaseUrl, getTossClientKey } from "@/lib/toss-payments";
+import { getTossClientKey } from "@/lib/toss-payments";
 import { getCreditStatus } from "@/lib/user-credits";
 import {
   getOrCreateSessionId,
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       packageId: String(body?.packageId ?? ""),
     });
-    const origin = getAppBaseUrl(request.nextUrl.origin);
+    const origin = request.nextUrl.origin;
 
     return jsonWithSessionCookie(
       {

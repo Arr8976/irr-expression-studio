@@ -33,7 +33,7 @@ describe("credit checkout", () => {
     expect(result.order.status).toBe("paid");
   });
 
-  it("rejects mismatched session", async () => {
+  it("rejects mismatched session for mock payment only", async () => {
     const order = await createPaymentOrder({
       sessionId: "session-1",
       packageId: "starter",

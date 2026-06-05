@@ -61,13 +61,14 @@ export async function fulfillCreditPurchase(
     throw new Error("order not found");
   }
 
-  assertOrderMatchesSession(order, input.sessionId);
   assertOrderAmount(order, input.amount);
+
+  const creditSessionId = order.sessionId;
 
   if (order.status === "paid") {
     return {
       order,
-      credits: await getCreditStatus(input.sessionId),
+      credits: await getCreditStatus(creditSessionId),
       mode: isPaymentMockEnabled() ? "mock" : "toss",
     };
   }
@@ -77,6 +78,7 @@ export async function fulfillCreditPurchase(
   }
 
   if (isPaymentMockEnabled() && !isTossPaymentsConfigured()) {
+    assertOrderMatchesSession(order, input.sessionId);
     await markPaymentOrderPaid({
       orderId: order.orderId,
       paymentKey: input.paymentKey ?? "mock-payment",
@@ -87,7 +89,7 @@ export async function fulfillCreditPurchase(
     }
     return {
       order: paidOrder,
-      credits: await grantCredits(input.sessionId, order.packageId),
+      credits: await grantCredits(creditSessionId, order.packageId),
       mode: "mock",
     };
   }
@@ -118,7 +120,7 @@ export async function fulfillCreditPurchase(
 
   return {
     order: paidOrder,
-    credits: await grantCredits(input.sessionId, order.packageId),
+    credits: await grantCredits(creditSessionId, order.packageId),
     mode: "toss",
   };
 }

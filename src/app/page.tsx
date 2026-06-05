@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
+import { prepareImageForUpload } from "@/lib/prepare-upload-image";
+import { readApiJson } from "@/lib/read-api-response";
 import { SFW_UPLOAD_NOTICE } from "@/lib/gemini-safety";
 import { EXPRESSION_PRESETS } from "@/lib/facs-presets";
 
@@ -62,6 +64,7 @@ export default function Home() {
   const [quotaHint, setQuotaHint] = useState<string | null>(null);
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditDailyLimit, setCreditDailyLimit] = useState(0);
+  const [preparingImage, setPreparingImage] = useState(false);
 
   function formatCreditHint(balance: number, dailyLimit?: number) {
     if (dailyLimit != null && dailyLimit > 0) {
@@ -115,10 +118,10 @@ export default function Home() {
     async function loadCredits() {
       try {
         const res = await fetch("/api/credits");
-        const data = (await res.json()) as {
+        const data = await readApiJson<{
           balance?: number;
           dailyLimit?: number;
-        };
+        }>(res);
         applyCreditsState(data);
       } catch {
         // ignore initial load errors
@@ -170,21 +173,43 @@ export default function Home() {
     return pinnedResults.some((item) => item.imageDataUrl === result.imageDataUrl);
   }, [pinnedResults, result?.imageDataUrl]);
 
-  function onFileChange(next: File | null) {
+  async function onFileChange(next: File | null) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setFile(next);
-    setPreviewUrl(next ? URL.createObjectURL(next) : null);
-    setResult(null);
+
+    if (!next) {
+      setFile(null);
+      setPreviewUrl(null);
+      setResult(null);
+      setError(null);
+      return;
+    }
+
+    setPreparingImage(true);
     setError(null);
+
+    try {
+      const prepared = await prepareImageForUpload(next);
+      setFile(prepared);
+      setPreviewUrl(URL.createObjectURL(prepared));
+      setResult(null);
+    } catch {
+      setFile(null);
+      setPreviewUrl(null);
+      setError(
+        "이미지를 처리할 수 없습니다. PNG, JPG, WEBP 파일을 다시 선택해 주세요.",
+      );
+    } finally {
+      setPreparingImage(false);
+    }
   }
 
-  function onDropFiles(files: FileList | null) {
+  async function onDropFiles(files: FileList | null) {
     const next = pickImageFile(files);
     if (!next) {
       setError("PNG, JPG, WEBP 이미지만 업로드할 수 있습니다.");
       return;
     }
-    onFileChange(next);
+    await onFileChange(next);
   }
 
   function downloadResult(imageDataUrl: string, presetLabel: string) {
@@ -215,7 +240,7 @@ export default function Home() {
         method: "POST",
         body: form,
       });
-      const data = (await res.json()) as TransformResponse;
+      const data = await readApiJson<TransformResponse>(res);
       if (!res.ok) {
         updateUsageHints(data);
         throw new Error(data.error ?? "변환 요청에 실패했습니다.");
@@ -342,9 +367,11 @@ export default function Home() {
                     onChange={(e) => onFileChange(pickImageFile(e.target.files))}
                   />
                   <span className="text-sm text-slate-300">
-                    {isDragging
-                      ? "여기에 이미지를 놓으세요"
-                      : "PNG / JPG / WEBP 업로드"}
+                    {preparingImage
+                      ? "이미지 최적화 중..."
+                      : isDragging
+                        ? "여기에 이미지를 놓으세요"
+                        : "PNG / JPG / WEBP 업로드"}
                   </span>
                   <span className="mt-2 text-xs text-slate-500">
                     클릭하거나 이미지를 드래그해서 놓기

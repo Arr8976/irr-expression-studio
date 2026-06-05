@@ -8,6 +8,7 @@ import {
   formatKrw,
   type CreditPackage,
 } from "@/lib/credit-packages";
+import { readApiJson } from "@/lib/read-api-response";
 
 type PaymentAvailability = {
   ready: boolean;
@@ -55,7 +56,7 @@ export function CreditShop({
     async function loadPaymentStatus() {
       try {
         const res = await fetch("/api/credits");
-        const data = (await res.json()) as { payment?: PaymentAvailability };
+        const data = await readApiJson<{ payment?: PaymentAvailability }>(res);
         if (data.payment) {
           setPayment(data.payment);
           if (data.payment.message && data.payment.mode === "mock") {
@@ -80,13 +81,13 @@ export function CreditShop({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packageId: packageItem.id }),
       });
-      const data = (await res.json()) as {
+      const data = await readApiJson<{
         error?: string;
         payment?: PaymentAvailability;
         checkout?: CheckoutPayload;
         balance?: number;
         dailyLimit?: number;
-      };
+      }>(res);
 
       if (typeof data.balance === "number") {
         onCreditsChange?.({
@@ -113,11 +114,11 @@ export function CreditShop({
             amount: data.checkout.amount,
           }),
         });
-        const confirmData = (await confirmRes.json()) as {
+        const confirmData = await readApiJson<{
           error?: string;
           balance?: number;
           dailyLimit?: number;
-        };
+        }>(confirmRes);
 
         if (!confirmRes.ok) {
           throw new Error(confirmData.error ?? "테스트 결제에 실패했습니다.");
@@ -171,7 +172,7 @@ export function CreditShop({
           <h2 className="text-lg font-semibold">크레딧</h2>
           <p className="mt-1 text-sm text-slate-400">
             무료 3회 이후에는 하루 단위 크레딧 패키지로 변환할 수 있습니다. 매일
-            자정(KST)에 크레딧이 초기화됩니다.
+            자정(KST)에 크레딧이 초기화됩니다. 크레딧은 이 브라우저에 저장됩니다.
           </p>
         </div>
         <div className="rounded-full bg-emerald-500/10 px-4 py-2 text-sm">

@@ -115,6 +115,20 @@ export async function POST(request: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer();
     const imageBuffer = Buffer.from(arrayBuffer);
+    const maxUploadBytes = 4 * 1024 * 1024;
+
+    if (imageBuffer.length > maxUploadBytes) {
+      return jsonWithSessionCookie(
+        {
+          error:
+            "이미지 용량이 너무 큽니다. 4MB 이하 이미지를 사용해 주세요.",
+          quota: quotaPayload(quotaBefore),
+          credits: await creditsPayload(sessionId),
+        },
+        { status: 413, sessionId, isNew },
+      );
+    }
+
     const mimeType = file.type || "image/png";
     const prompt = buildFacsPrompt(preset.auCodes);
     const reference = await loadReferenceGrid();

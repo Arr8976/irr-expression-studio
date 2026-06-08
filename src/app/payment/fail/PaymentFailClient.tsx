@@ -11,7 +11,7 @@ export default function PaymentFailClient() {
     "결제가 취소되었거나 실패했습니다.";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-16">
+    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16">
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-8">
         <h1 className="text-2xl font-bold text-amber-300">결제 실패</h1>
         <p className="mt-3 text-slate-300">{message}</p>

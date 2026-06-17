@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
@@ -57,6 +58,7 @@ type TransformResponse = {
 };
 
 export default function Home() {
+  const { data: session, status: sessionStatus } = useSession();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [presetId, setPresetId] = useState(EXPRESSION_PRESETS[0].id);
@@ -136,6 +138,8 @@ export default function Home() {
   }
 
   useEffect(() => {
+    if (sessionStatus === "loading") return;
+
     async function loadCredits() {
       try {
         const res = await fetch("/api/credits");
@@ -162,7 +166,7 @@ export default function Home() {
     }
 
     loadCredits();
-  }, []);
+  }, [sessionStatus, session?.user?.accountKey]);
 
   useEffect(() => {
     return () => {

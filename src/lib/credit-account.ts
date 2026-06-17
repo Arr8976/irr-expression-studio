@@ -18,6 +18,7 @@ export type CreditAccountContext = {
   sessionId: string;
   isNewSession: boolean;
   accountKey: string;
+  legacyAccountKey?: string;
   isLoggedIn: boolean;
 };
 
@@ -27,11 +28,13 @@ export async function resolveCreditAccount(
   const authSession = await auth();
   const { sessionId, isNew } = getOrCreateSessionId(request);
   const accountKey = authSession?.user?.accountKey ?? sessionId;
+  const legacyAccountKey = authSession?.user?.legacyAccountKey;
 
   return {
     sessionId,
     isNewSession: isNew,
     accountKey,
+    legacyAccountKey,
     isLoggedIn: Boolean(authSession?.user?.accountKey),
   };
 }
@@ -53,6 +56,16 @@ export async function syncCreditAccount(request: NextRequest) {
     for (const guestSessionId of guestIds) {
       await mergeGuestCreditsIntoUser({
         guestSessionId,
+        userAccountKey: account.accountKey,
+      });
+    }
+
+    if (
+      account.legacyAccountKey &&
+      account.legacyAccountKey !== account.accountKey
+    ) {
+      await mergeGuestCreditsIntoUser({
+        guestSessionId: account.legacyAccountKey,
         userAccountKey: account.accountKey,
       });
     }

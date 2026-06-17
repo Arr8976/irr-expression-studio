@@ -17,7 +17,7 @@ async function prepareGuestMerge() {
 
 async function signInWithGuestMerge(provider: "google" | "kakao") {
   await prepareGuestMerge();
-  await signIn(provider);
+  await signIn(provider, { callbackUrl: "/" });
 }
 
 export function AuthBar({

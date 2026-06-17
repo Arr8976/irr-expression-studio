@@ -34,6 +34,11 @@ export function buildAuthProviders(): Provider[] {
         clientSecret: process.env.AUTH_KAKAO_SECRET!.trim(),
         // Kakao OAuth는 PKCE 미지원 — 기본 pkce 사용 시 callback에서 Server error 발생
         checks: ["state"],
+        authorization: {
+          params: {
+            scope: "profile_nickname account_email",
+          },
+        },
       }),
     );
   }

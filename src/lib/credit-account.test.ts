@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { buildUserAccountKey } from "./credit-account-keys";
+import {
+  buildProviderAccountKey,
+  buildEmailAccountKey,
+  resolveUserAccountKeys,
+} from "./credit-account-keys";
 import {
   mergeCreditRows,
   mergeGuestCreditsIntoUser,
@@ -11,9 +15,39 @@ import {
 } from "./credit-storage";
 
 describe("credit account keys", () => {
-  it("builds stable user account keys", () => {
-    expect(buildUserAccountKey("google", "123")).toBe("user:google:123");
-    expect(buildUserAccountKey("kakao", "456")).toBe("user:kakao:456");
+  it("builds stable provider account keys", () => {
+    expect(buildProviderAccountKey("google", "123")).toBe("user:google:123");
+    expect(buildProviderAccountKey("kakao", "456")).toBe("user:kakao:456");
+  });
+
+  it("uses email as the shared account key across providers", () => {
+    expect(resolveUserAccountKeys({
+      provider: "google",
+      providerAccountId: "123",
+      email: "User@Example.com",
+    })).toEqual({
+      accountKey: buildEmailAccountKey("user@example.com"),
+      legacyAccountKey: "user:google:123",
+    });
+
+    expect(resolveUserAccountKeys({
+      provider: "kakao",
+      providerAccountId: "456",
+      email: "user@example.com",
+    })).toEqual({
+      accountKey: buildEmailAccountKey("user@example.com"),
+      legacyAccountKey: "user:kakao:456",
+    });
+  });
+
+  it("falls back to provider keys when email is missing", () => {
+    expect(resolveUserAccountKeys({
+      provider: "kakao",
+      providerAccountId: "456",
+    })).toEqual({
+      accountKey: "user:kakao:456",
+      legacyAccountKey: undefined,
+    });
   });
 });
 

@@ -1,11 +1,19 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import Kakao from "next-auth/providers/kakao";
 import { buildUserAccountKey } from "@/lib/credit-account-keys";
+import { buildAuthProviders } from "@/lib/auth-providers";
+
+const providers = buildAuthProviders();
+
+if (providers.length === 0) {
+  console.warn(
+    "[auth] No OAuth providers configured. Set AUTH_GOOGLE_* or AUTH_KAKAO_* in .env.local",
+  );
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google, Kakao],
+  providers,
   trustHost: true,
+  secret: process.env.AUTH_SECRET,
   pages: {
     signIn: "/login",
   },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AuthBar } from "@/components/AuthBar";
+import { AuthBarServer } from "@/components/AuthBarServer";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
@@ -349,7 +349,7 @@ export default function Home() {
                 AI 표정 변환기
               </button>
             </div>
-            <AuthBar />
+            <AuthBarServer />
           </div>
           <p className="mt-3 max-w-3xl text-slate-300">
             AI를 이용한 표정 변경 프롬프트로 원본을 유지하며 표정 변환을 시도합니다.

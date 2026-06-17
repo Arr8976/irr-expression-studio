@@ -1,5 +1,9 @@
-import Link from "next/link";
 import { AuthBar } from "@/components/AuthBar";
+import {
+  isGoogleAuthConfigured,
+  isKakaoAuthConfigured,
+} from "@/lib/auth-providers";
+import Link from "next/link";
 
 export default function LoginPage() {
   return (
@@ -11,7 +15,10 @@ export default function LoginPage() {
       </p>
 
       <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-        <AuthBar />
+        <AuthBar
+          googleEnabled={isGoogleAuthConfigured()}
+          kakaoEnabled={isKakaoAuthConfigured()}
+        />
       </div>
 
       <Link

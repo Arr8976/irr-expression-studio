@@ -2,7 +2,15 @@
 
 import { signIn, signOut, useSession } from "next-auth/react";
 
-export function AuthBar() {
+type AuthBarProps = {
+  googleEnabled?: boolean;
+  kakaoEnabled?: boolean;
+};
+
+export function AuthBar({
+  googleEnabled = true,
+  kakaoEnabled = false,
+}: AuthBarProps) {
   const { data: session, status } = useSession();
   const loading = status === "loading";
 
@@ -32,20 +40,27 @@ export function AuthBar() {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={() => signIn("google")}
-        className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200 transition hover:border-emerald-500/50 hover:text-emerald-200"
-      >
-        Google 로그인
-      </button>
-      <button
-        type="button"
-        onClick={() => signIn("kakao")}
-        className="rounded-lg border border-amber-500/40 bg-amber-400/10 px-3 py-1.5 text-xs text-amber-100 transition hover:bg-amber-400/20"
-      >
-        카카오 로그인
-      </button>
+      {googleEnabled && (
+        <button
+          type="button"
+          onClick={() => signIn("google")}
+          className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200 transition hover:border-emerald-500/50 hover:text-emerald-200"
+        >
+          Google 로그인
+        </button>
+      )}
+      {kakaoEnabled && (
+        <button
+          type="button"
+          onClick={() => signIn("kakao")}
+          className="rounded-lg border border-amber-500/40 bg-amber-400/10 px-3 py-1.5 text-xs text-amber-100 transition hover:bg-amber-400/20"
+        >
+          카카오 로그인
+        </button>
+      )}
+      {!googleEnabled && !kakaoEnabled && (
+        <span className="text-xs text-slate-500">로그인 준비 중</span>
+      )}
     </div>
   );
 }

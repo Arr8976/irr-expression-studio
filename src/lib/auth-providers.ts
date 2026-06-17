@@ -28,19 +28,23 @@ export function buildAuthProviders(): Provider[] {
   }
 
   if (isKakaoAuthConfigured()) {
-    providers.push(
-      Kakao({
-        clientId: process.env.AUTH_KAKAO_ID!.trim(),
-        clientSecret: process.env.AUTH_KAKAO_SECRET!.trim(),
-        // Kakao OAuth는 PKCE 미지원 — 기본 pkce 사용 시 callback에서 Server error 발생
-        checks: ["state"],
-        authorization: {
-          params: {
-            scope: "profile_nickname account_email",
-          },
+    const kakaoOptions: Parameters<typeof Kakao>[0] = {
+      clientId: process.env.AUTH_KAKAO_ID!.trim(),
+      clientSecret: process.env.AUTH_KAKAO_SECRET!.trim(),
+      // Kakao OAuth는 PKCE 미지원 — 기본 pkce 사용 시 callback에서 Server error 발생
+      checks: ["state"],
+    };
+
+    // 카카오 콘솔에서 '카카오계정(이메일)' 동의항목을 켠 뒤에만 설정하세요.
+    if (process.env.AUTH_KAKAO_REQUEST_EMAIL === "1") {
+      kakaoOptions.authorization = {
+        params: {
+          scope: "profile_nickname account_email",
         },
-      }),
-    );
+      };
+    }
+
+    providers.push(Kakao(kakaoOptions));
   }
 
   return providers;

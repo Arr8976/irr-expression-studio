@@ -7,6 +7,19 @@ type AuthBarProps = {
   kakaoEnabled?: boolean;
 };
 
+async function prepareGuestMerge() {
+  try {
+    await fetch("/api/auth/prepare-guest-merge", { method: "POST" });
+  } catch {
+    // OAuth는 병합 쿠키 없이도 현재 irr_sid로 시도합니다.
+  }
+}
+
+async function signInWithGuestMerge(provider: "google" | "kakao") {
+  await prepareGuestMerge();
+  await signIn(provider);
+}
+
 export function AuthBar({
   googleEnabled = true,
   kakaoEnabled = false,
@@ -43,7 +56,7 @@ export function AuthBar({
       {googleEnabled && (
         <button
           type="button"
-          onClick={() => signIn("google")}
+          onClick={() => signInWithGuestMerge("google")}
           className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200 transition hover:border-emerald-500/50 hover:text-emerald-200"
         >
           Google 로그인
@@ -52,14 +65,16 @@ export function AuthBar({
       {kakaoEnabled && (
         <button
           type="button"
-          onClick={() => signIn("kakao")}
+          onClick={() => signInWithGuestMerge("kakao")}
           className="rounded-lg border border-amber-500/40 bg-amber-400/10 px-3 py-1.5 text-xs text-amber-100 transition hover:bg-amber-400/20"
         >
           카카오 로그인
         </button>
       )}
       {!googleEnabled && !kakaoEnabled && (
-        <span className="text-xs text-slate-500">로그인 준비 중</span>
+        <span className="text-xs text-slate-500">
+          로그인 설정 필요 (.env.local 확인)
+        </span>
       )}
     </div>
   );

@@ -1,11 +1,21 @@
 import { NextRequest } from "next/server";
 import { getAuthUserSummary } from "@/lib/auth-session";
 import { getPaymentAvailability } from "@/lib/credit-checkout";
-import { syncCreditAccount } from "@/lib/credit-account";
+import {
+  GUEST_MERGE_COOKIE,
+  syncCreditAccount,
+} from "@/lib/credit-account";
+import {
+  isGoogleAuthConfigured,
+  isKakaoAuthConfigured,
+} from "@/lib/auth-providers";
 import { CREDIT_PACKAGES } from "@/lib/credit-packages";
 import { getCreditStorageInfo } from "@/lib/credit-storage";
 import { getCreditStatus } from "@/lib/user-credits";
-import { jsonWithSessionCookie } from "@/lib/request-quota-context";
+import {
+  clearCookie,
+  jsonWithSessionCookie,
+} from "@/lib/request-quota-context";
 
 export const runtime = "nodejs";
 
@@ -16,19 +26,31 @@ export async function GET(request: NextRequest) {
   const credits = await getCreditStatus(account.accountKey);
   const payment = getPaymentAvailability();
 
-  return jsonWithSessionCookie(
+  const response = jsonWithSessionCookie(
     {
       ...credits,
       packages: CREDIT_PACKAGES,
       payment,
       storage: getCreditStorageInfo(),
-      auth: authUser,
+      auth: {
+        ...authUser,
+        providers: {
+          google: isGoogleAuthConfigured(),
+          kakao: isKakaoAuthConfigured(),
+        },
+      },
     },
     {
       sessionId: account.sessionId,
       isNew: account.isNewSession,
     },
   );
+
+  if (account.isLoggedIn) {
+    clearCookie(response, GUEST_MERGE_COOKIE);
+  }
+
+  return response;
 }
 
 export async function POST(request: NextRequest) {

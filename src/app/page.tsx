@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AuthBarServer } from "@/components/AuthBarServer";
+import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
@@ -72,6 +72,10 @@ export default function Home() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [customPromptEnabled, setCustomPromptEnabled] = useState(false);
   const [combinePresetWithCustom, setCombinePresetWithCustom] = useState(true);
+  const [authProviders, setAuthProviders] = useState({
+    google: false,
+    kakao: false,
+  });
 
   const trimmedCustomPrompt = customPrompt.trim();
   const hasCustomPrompt = trimmedCustomPrompt.length > 0;
@@ -133,8 +137,20 @@ export default function Home() {
         const data = await readApiJson<{
           balance?: number;
           dailyLimit?: number;
+          auth?: {
+            providers?: {
+              google?: boolean;
+              kakao?: boolean;
+            };
+          };
         }>(res);
         applyCreditsState(data);
+        if (data.auth?.providers) {
+          setAuthProviders({
+            google: Boolean(data.auth.providers.google),
+            kakao: Boolean(data.auth.providers.kakao),
+          });
+        }
       } catch {
         // ignore initial load errors
       }
@@ -349,7 +365,10 @@ export default function Home() {
                 AI 표정 변환기
               </button>
             </div>
-            <AuthBarServer />
+            <AuthBar
+              googleEnabled={authProviders.google}
+              kakaoEnabled={authProviders.kakao}
+            />
           </div>
           <p className="mt-3 max-w-3xl text-slate-300">
             AI를 이용한 표정 변경 프롬프트로 원본을 유지하며 표정 변환을 시도합니다.

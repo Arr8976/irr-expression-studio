@@ -44,6 +44,16 @@ export function attachSessionCookie(
   });
 }
 
+export function clearCookie(response: NextResponse, name: string) {
+  response.cookies.set(name, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0,
+    path: "/",
+  });
+}
+
 export function jsonWithSessionCookie<T>(
   body: T,
   init: {

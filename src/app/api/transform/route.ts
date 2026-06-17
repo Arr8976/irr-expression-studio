@@ -36,8 +36,11 @@ import {
 import { formatProviderError } from "@/lib/format-provider-error";
 import { logGeminiUsage } from "@/lib/gemini-usage";
 import {
+  quotaScopeId,
+  syncCreditAccount,
+} from "@/lib/credit-account";
+import {
   getClientIp,
-  getOrCreateSessionId,
   jsonWithSessionCookie,
 } from "@/lib/request-quota-context";
 import { createTransformSeed, parseTransformSeed } from "@/lib/transform-seed";
@@ -56,12 +59,12 @@ function quotaPayload(status: Awaited<ReturnType<typeof getQuotaStatus>>) {
   };
 }
 
-async function creditsPayload(sessionId: string) {
-  return getCreditStatus(sessionId);
+async function creditsPayload(accountKey: string) {
+  return getCreditStatus(accountKey);
 }
 
-async function noQuotaMessage(sessionId: string) {
-  const credits = await getCreditBalance(sessionId);
+async function noQuotaMessage(accountKey: string) {
+  const credits = await getCreditBalance(accountKey);
   if (credits > 0) {
     return quotaExceededMessage();
   }
@@ -96,10 +99,12 @@ function responsePreset(
 }
 
 export async function POST(request: NextRequest) {
-  const { sessionId, isNew } = getOrCreateSessionId(request);
+  const account = await syncCreditAccount(request);
+  const { sessionId, isNewSession: isNew, accountKey } = account;
+  const quotaSessionId = quotaScopeId(account);
   const ip = getClientIp(request);
-  const quotaBefore = await getQuotaStatus({ ip, sessionId });
-  const creditsBefore = await getCreditBalance(sessionId);
+  const quotaBefore = await getQuotaStatus({ ip, sessionId: quotaSessionId });
+  const creditsBefore = await getCreditBalance(accountKey);
   let billingSource: "free" | "credit" | null = null;
 
   try {
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
           {
             error: validation.error,
             quota: quotaPayload(quotaBefore),
-            credits: await creditsPayload(sessionId),
+            credits: await creditsPayload(accountKey),
           },
           { status: 400, sessionId, isNew },
         );
@@ -132,7 +137,7 @@ export async function POST(request: NextRequest) {
             error:
               "프롬프트 표정은 오늘 사용 가능한 크레딧이 있을 때만 이용할 수 있습니다.",
             quota: quotaPayload(quotaBefore),
-            credits: await creditsPayload(sessionId),
+            credits: await creditsPayload(accountKey),
           },
           { status: 403, sessionId, isNew },
         );
@@ -149,9 +154,9 @@ export async function POST(request: NextRequest) {
       } else {
         return jsonWithSessionCookie(
           {
-            error: await noQuotaMessage(sessionId),
+            error: await noQuotaMessage(accountKey),
             quota: quotaPayload(quotaBefore),
-            credits: await creditsPayload(sessionId),
+            credits: await creditsPayload(accountKey),
           },
           { status: 429, sessionId, isNew },
         );
@@ -179,7 +184,7 @@ export async function POST(request: NextRequest) {
         {
           error: "표정 프리셋을 선택하거나 프롬프트를 입력해 주세요.",
           quota: quotaPayload(quotaBefore),
-          credits: await creditsPayload(sessionId),
+          credits: await creditsPayload(accountKey),
         },
         { status: 400, sessionId, isNew },
       );
@@ -195,7 +200,7 @@ export async function POST(request: NextRequest) {
           error:
             "이미지 용량이 너무 큽니다. 4MB 이하 이미지를 사용해 주세요.",
           quota: quotaPayload(quotaBefore),
-          credits: await creditsPayload(sessionId),
+          credits: await creditsPayload(accountKey),
         },
         { status: 413, sessionId, isNew },
       );
@@ -257,7 +262,7 @@ export async function POST(request: NextRequest) {
               error: error.userMessage,
               code: error.reason,
               quota: quotaPayload(quotaBefore),
-              credits: await creditsPayload(sessionId),
+              credits: await creditsPayload(accountKey),
             },
             { status: 422, sessionId, isNew },
           );
@@ -269,7 +274,7 @@ export async function POST(request: NextRequest) {
             error: message,
             code: "provider_error",
             quota: quotaPayload(quotaBefore),
-            credits: await creditsPayload(sessionId),
+            credits: await creditsPayload(accountKey),
           },
           { status: 502, sessionId, isNew },
         );
@@ -284,12 +289,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isQuotaBypassed() && billingSource === "free") {
-      await consumeQuota({ ip, sessionId });
+      await consumeQuota({ ip, sessionId: quotaSessionId });
     } else if (!isQuotaBypassed() && billingSource === "credit") {
-      await consumeCredit(sessionId);
+      await consumeCredit(accountKey);
     }
 
-    const quotaAfter = await getQuotaStatus({ ip, sessionId });
+    const quotaAfter = await getQuotaStatus({ ip, sessionId: quotaSessionId });
 
     return jsonWithSessionCookie(
       {
@@ -304,7 +309,7 @@ export async function POST(request: NextRequest) {
         seedSupported: mode === "gemini",
         usage,
         quota: quotaPayload(quotaAfter),
-        credits: await creditsPayload(sessionId),
+        credits: await creditsPayload(accountKey),
         billingSource,
         imageDataUrl: `data:image/png;base64,${outputBuffer.toString("base64")}`,
         note: mode === "mock" ? mockModeNote() : undefined,
@@ -317,7 +322,7 @@ export async function POST(request: NextRequest) {
       {
         error: message,
         quota: quotaPayload(quotaBefore),
-        credits: await creditsPayload(sessionId),
+        credits: await creditsPayload(accountKey),
       },
       { status: 500, sessionId, isNew },
     );

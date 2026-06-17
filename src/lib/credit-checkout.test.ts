@@ -18,6 +18,7 @@ describe("credit checkout", () => {
   it("grants daily credits after mock payment confirmation", async () => {
     const order = await createPaymentOrder({
       sessionId: "session-1",
+      creditAccountKey: "session-1",
       packageId: "starter",
     });
 
@@ -36,6 +37,7 @@ describe("credit checkout", () => {
   it("rejects mismatched session for mock payment only", async () => {
     const order = await createPaymentOrder({
       sessionId: "session-1",
+      creditAccountKey: "session-1",
       packageId: "starter",
     });
 
@@ -51,6 +53,7 @@ describe("credit checkout", () => {
   it("is idempotent for already paid orders", async () => {
     const order = await createPaymentOrder({
       sessionId: "session-1",
+      creditAccountKey: "session-1",
       packageId: "starter",
     });
 

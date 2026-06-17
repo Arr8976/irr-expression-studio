@@ -1,15 +1,14 @@
 import { NextRequest } from "next/server";
 import { fulfillCreditPurchase } from "@/lib/credit-checkout";
+import { syncCreditAccount } from "@/lib/credit-account";
 import { markPaymentOrderFailed } from "@/lib/payment-orders";
-import {
-  getOrCreateSessionId,
-  jsonWithSessionCookie,
-} from "@/lib/request-quota-context";
+import { jsonWithSessionCookie } from "@/lib/request-quota-context";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const { sessionId, isNew } = getOrCreateSessionId(request);
+  const account = await syncCreditAccount(request);
+  const { sessionId, isNewSession: isNew } = account;
   const body = (await request.json().catch(() => null)) as {
     paymentKey?: string;
     orderId?: string;

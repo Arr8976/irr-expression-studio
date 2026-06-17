@@ -12,6 +12,7 @@ export type SessionCreditsRow = {
 export type PaymentOrderRow = {
   orderId: string;
   sessionId: string;
+  creditAccountKey: string;
   packageId: string;
   amount: number;
   credits: number;
@@ -87,6 +88,7 @@ function getSqliteDb(): DatabaseSync {
     CREATE TABLE IF NOT EXISTS payment_orders (
       order_id TEXT PRIMARY KEY,
       session_id TEXT NOT NULL,
+      credit_account_key TEXT,
       package_id TEXT NOT NULL,
       amount INTEGER NOT NULL,
       credits INTEGER NOT NULL,
@@ -108,6 +110,14 @@ function getSqliteDb(): DatabaseSync {
       PRIMARY KEY (scope_type, scope_id, date_key)
     );
   `);
+
+  try {
+    sqliteDb.exec(
+      `ALTER TABLE payment_orders ADD COLUMN credit_account_key TEXT`,
+    );
+  } catch {
+    // column already exists
+  }
 
   return sqliteDb;
 }
@@ -210,7 +220,9 @@ export async function readPaymentOrder(
   const db = getSqliteDb();
   const row = db
     .prepare(
-      `SELECT order_id AS orderId, session_id AS sessionId, package_id AS packageId,
+      `SELECT order_id AS orderId, session_id AS sessionId,
+              COALESCE(credit_account_key, session_id) AS creditAccountKey,
+              package_id AS packageId,
               amount, credits, order_name AS orderName, status, payment_key AS paymentKey,
               created_at AS createdAt
        FROM payment_orders WHERE order_id = ?`,
@@ -238,10 +250,11 @@ export async function writePaymentOrder(order: PaymentOrderRow): Promise<void> {
   const db = getSqliteDb();
   db.prepare(
     `INSERT INTO payment_orders (
-       order_id, session_id, package_id, amount, credits, order_name, status, payment_key, created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       order_id, session_id, credit_account_key, package_id, amount, credits, order_name, status, payment_key, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(order_id) DO UPDATE SET
        session_id = excluded.session_id,
+       credit_account_key = excluded.credit_account_key,
        package_id = excluded.package_id,
        amount = excluded.amount,
        credits = excluded.credits,
@@ -252,6 +265,7 @@ export async function writePaymentOrder(order: PaymentOrderRow): Promise<void> {
   ).run(
     order.orderId,
     order.sessionId,
+    order.creditAccountKey,
     order.packageId,
     order.amount,
     order.credits,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
@@ -336,15 +337,20 @@ export default function Home() {
     <main className="w-full flex-1 bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-10">
         <header className="mb-8">
-          <p className="text-sm text-emerald-400">IRR Expression Studio</p>
-          <button
-            type="button"
-            onClick={() => window.location.assign("/")}
-            className="mt-2 block text-left text-3xl font-bold tracking-tight transition hover:text-emerald-300"
-            title="처음으로"
-          >
-            AI 표정 변환기
-          </button>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm text-emerald-400">IRR Expression Studio</p>
+              <button
+                type="button"
+                onClick={() => window.location.assign("/")}
+                className="mt-2 block text-left text-3xl font-bold tracking-tight transition hover:text-emerald-300"
+                title="처음으로"
+              >
+                AI 표정 변환기
+              </button>
+            </div>
+            <AuthBar />
+          </div>
           <p className="mt-3 max-w-3xl text-slate-300">
             AI를 이용한 표정 변경 프롬프트로 원본을 유지하며 표정 변환을 시도합니다.
           </p>

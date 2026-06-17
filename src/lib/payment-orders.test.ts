@@ -14,6 +14,7 @@ describe("payment orders", () => {
   it("creates a pending order from package id", async () => {
     const order = await createPaymentOrder({
       sessionId: "session-1",
+      creditAccountKey: "session-1",
       packageId: "standard",
     });
 
@@ -26,6 +27,7 @@ describe("payment orders", () => {
   it("marks an order as paid", async () => {
     const order = await createPaymentOrder({
       sessionId: "session-1",
+      creditAccountKey: "session-1",
       packageId: "starter",
     });
 

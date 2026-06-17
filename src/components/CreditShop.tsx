@@ -172,7 +172,8 @@ export function CreditShop({
           <h2 className="text-lg font-semibold">크레딧</h2>
           <p className="mt-1 text-sm text-slate-400">
             무료 3회 이후에는 하루 단위 크레딧 패키지로 변환할 수 있습니다. 매일
-            자정(KST)에 크레딧이 초기화됩니다. 크레딧은 이 브라우저에 저장됩니다.
+            자정(KST)에 크레딧이 초기화됩니다. 로그인하면 기기·브라우저와
+            관계없이 같은 크레딧을 사용할 수 있습니다.
           </p>
         </div>
         <div className="rounded-full bg-emerald-500/10 px-4 py-2 text-sm">

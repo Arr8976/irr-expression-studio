@@ -41,7 +41,7 @@ function assertOrderAmount(order: PaymentOrder, amount: number) {
 }
 
 async function grantCredits(
-  sessionId: string,
+  accountKey: string,
   packageId: string,
 ): Promise<CreditStatus> {
   const pkg = getCreditPackageById(packageId);
@@ -49,8 +49,8 @@ async function grantCredits(
     throw new Error("invalid packageId");
   }
 
-  await setDailyCreditLimit(sessionId, pkg.credits);
-  return getCreditStatus(sessionId);
+  await setDailyCreditLimit(accountKey, pkg.credits);
+  return getCreditStatus(accountKey);
 }
 
 export async function fulfillCreditPurchase(
@@ -63,12 +63,12 @@ export async function fulfillCreditPurchase(
 
   assertOrderAmount(order, input.amount);
 
-  const creditSessionId = order.sessionId;
+  const creditAccountKey = order.creditAccountKey || order.sessionId;
 
   if (order.status === "paid") {
     return {
       order,
-      credits: await getCreditStatus(creditSessionId),
+      credits: await getCreditStatus(creditAccountKey),
       mode: isPaymentMockEnabled() ? "mock" : "toss",
     };
   }
@@ -89,7 +89,7 @@ export async function fulfillCreditPurchase(
     }
     return {
       order: paidOrder,
-      credits: await grantCredits(creditSessionId, order.packageId),
+      credits: await grantCredits(creditAccountKey, order.packageId),
       mode: "mock",
     };
   }
@@ -120,7 +120,7 @@ export async function fulfillCreditPurchase(
 
   return {
     order: paidOrder,
-    credits: await grantCredits(creditSessionId, order.packageId),
+    credits: await grantCredits(creditAccountKey, order.packageId),
     mode: "toss",
   };
 }

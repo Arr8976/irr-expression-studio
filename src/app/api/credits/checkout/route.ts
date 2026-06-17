@@ -1,17 +1,15 @@
 import { NextRequest } from "next/server";
 import { getPaymentAvailability } from "@/lib/credit-checkout";
+import { syncCreditAccount } from "@/lib/credit-account";
 import { createPaymentOrder } from "@/lib/payment-orders";
 import { getTossClientKey } from "@/lib/toss-payments";
 import { getCreditStatus } from "@/lib/user-credits";
-import {
-  getOrCreateSessionId,
-  jsonWithSessionCookie,
-} from "@/lib/request-quota-context";
+import { jsonWithSessionCookie } from "@/lib/request-quota-context";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const { sessionId, isNew } = getOrCreateSessionId(request);
+  const account = await syncCreditAccount(request);
   const body = (await request.json().catch(() => null)) as {
     packageId?: string;
   } | null;
@@ -21,16 +19,21 @@ export async function POST(request: NextRequest) {
     return jsonWithSessionCookie(
       {
         error: availability.message,
-        ...(await getCreditStatus(sessionId)),
+        ...(await getCreditStatus(account.accountKey)),
         payment: availability,
       },
-      { status: 503, sessionId, isNew },
+      {
+        status: 503,
+        sessionId: account.sessionId,
+        isNew: account.isNewSession,
+      },
     );
   }
 
   try {
     const order = await createPaymentOrder({
-      sessionId,
+      sessionId: account.sessionId,
+      creditAccountKey: account.accountKey,
       packageId: String(body?.packageId ?? ""),
     });
     const origin = request.nextUrl.origin;
@@ -40,16 +43,19 @@ export async function POST(request: NextRequest) {
         payment: availability,
         checkout: {
           clientKey: getTossClientKey(),
-          customerKey: sessionId,
+          customerKey: account.accountKey,
           orderId: order.orderId,
           orderName: order.orderName,
           amount: order.amount,
           successUrl: `${origin}/payment/success`,
           failUrl: `${origin}/payment/fail`,
         },
-        ...(await getCreditStatus(sessionId)),
+        ...(await getCreditStatus(account.accountKey)),
       },
-      { sessionId, isNew },
+      {
+        sessionId: account.sessionId,
+        isNew: account.isNewSession,
+      },
     );
   } catch (error) {
     const message =
@@ -57,10 +63,14 @@ export async function POST(request: NextRequest) {
     return jsonWithSessionCookie(
       {
         error: message,
-        ...(await getCreditStatus(sessionId)),
+        ...(await getCreditStatus(account.accountKey)),
         payment: availability,
       },
-      { status: 400, sessionId, isNew },
+      {
+        status: 400,
+        sessionId: account.sessionId,
+        isNew: account.isNewSession,
+      },
     );
   }
 }

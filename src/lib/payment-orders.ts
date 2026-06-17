@@ -16,6 +16,7 @@ function randomSuffix() {
 
 export async function createPaymentOrder(input: {
   sessionId: string;
+  creditAccountKey: string;
   packageId: string;
 }): Promise<PaymentOrder> {
   const pkg = getCreditPackageById(input.packageId);
@@ -27,6 +28,7 @@ export async function createPaymentOrder(input: {
   const order: PaymentOrder = {
     orderId,
     sessionId: input.sessionId,
+    creditAccountKey: input.creditAccountKey,
     packageId: pkg.id,
     amount: pkg.priceKrw,
     credits: pkg.credits,

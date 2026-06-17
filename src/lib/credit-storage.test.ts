@@ -59,6 +59,7 @@ describe("credit storage sqlite", () => {
     await writePaymentOrder({
       orderId: "irr-test-order",
       sessionId: "session-1",
+      creditAccountKey: "session-1",
       packageId: "starter",
       amount: 1990,
       credits: 10,

@@ -30,8 +30,10 @@ export function buildAuthProviders(): Provider[] {
   if (isKakaoAuthConfigured()) {
     providers.push(
       Kakao({
-        clientId: process.env.AUTH_KAKAO_ID!,
-        clientSecret: process.env.AUTH_KAKAO_SECRET!,
+        clientId: process.env.AUTH_KAKAO_ID!.trim(),
+        clientSecret: process.env.AUTH_KAKAO_SECRET!.trim(),
+        // Kakao OAuth는 PKCE 미지원 — 기본 pkce 사용 시 callback에서 Server error 발생
+        checks: ["state"],
       }),
     );
   }

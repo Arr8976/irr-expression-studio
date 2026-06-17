@@ -1,7 +1,7 @@
 import {
-  incrementQuotaUsed,
   readQuotaUsed,
   resetCreditStorageForTests,
+  tryAtomicConsumeFreeQuota,
 } from "./credit-storage";
 
 const DEFAULT_DAILY_FREE_LIMIT = 3;
@@ -71,17 +71,14 @@ export async function consumeQuota(input: {
   ip: string;
   sessionId: string;
   now?: Date;
-}) {
+}): Promise<boolean> {
+  const limit = getDailyFreeLimit();
   const dateKey = todayKey(input.now);
-  await incrementQuotaUsed({
-    scopeType: "ip",
+  return tryAtomicConsumeFreeQuota({
+    ip: input.ip,
+    sessionId: input.sessionId,
     dateKey,
-    scopeId: input.ip,
-  });
-  await incrementQuotaUsed({
-    scopeType: "session",
-    dateKey,
-    scopeId: input.sessionId,
+    limit,
   });
 }
 

@@ -2,7 +2,7 @@
 
 export type PinnedResult = {
   id: string;
-  imageDataUrl: string;
+  imageUrl: string;
   presetLabel: string;
   presetEmoji: string;
   seed?: number;
@@ -70,7 +70,7 @@ export function PinnedTray({
               <div className="relative aspect-square bg-slate-950">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={item.imageDataUrl}
+                  src={item.imageUrl}
                   alt={`${item.presetLabel} 고정 결과`}
                   className="h-full w-full object-contain"
                 />

@@ -3,6 +3,7 @@ import {
   readSessionCredits,
   writeSessionCredits,
   resetCreditStorageForTests,
+  tryAtomicConsumeCredit,
 } from "./credit-storage";
 
 type SessionCredits = {
@@ -104,10 +105,11 @@ export async function consumeCredit(
   now = new Date(),
 ): Promise<boolean> {
   const session = await loadSession(sessionId, now);
-  if (session.used >= session.dailyLimit) return false;
-  session.used += 1;
-  await writeSessionCredits(sessionId, session);
-  return true;
+  return tryAtomicConsumeCredit({
+    sessionId,
+    dateKey: session.dateKey,
+    dailyLimit: session.dailyLimit,
+  });
 }
 
 export async function resetCreditStore() {

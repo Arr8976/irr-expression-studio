@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     if (!(file instanceof File)) {
       return jsonWithSessionCookie(
-        { error: "image file is required", quota: quotaPayload(quotaBefore), credits: await creditsPayload(sessionId) },
+        { error: "image file is required", quota: quotaPayload(quotaBefore), credits: await creditsPayload(accountKey) },
         { status: 400, sessionId, isNew },
       );
     }
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     if (expressionSource === "preset" && !preset) {
       return jsonWithSessionCookie(
-        { error: "invalid presetId", quota: quotaPayload(quotaBefore), credits: await creditsPayload(sessionId) },
+        { error: "invalid presetId", quota: quotaPayload(quotaBefore), credits: await creditsPayload(accountKey) },
         { status: 400, sessionId, isNew },
       );
     }
@@ -288,10 +288,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isQuotaBypassed() && billingSource === "free") {
-      await consumeQuota({ ip, sessionId: quotaSessionId });
-    } else if (!isQuotaBypassed() && billingSource === "credit") {
-      await consumeCredit(accountKey);
+    if (!isQuotaBypassed() && billingSource) {
+      let billed = true;
+      if (billingSource === "free") {
+        billed = await consumeQuota({ ip, sessionId: quotaSessionId });
+      } else if (billingSource === "credit") {
+        billed = await consumeCredit(accountKey);
+      }
+
+      if (!billed) {
+        return jsonWithSessionCookie(
+          {
+            error:
+              "변환은 완료되었으나 사용 한도 차감에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+            code: "billing_failed",
+            quota: quotaPayload(
+              await getQuotaStatus({ ip, sessionId: quotaSessionId }),
+            ),
+            credits: await creditsPayload(accountKey),
+          },
+          { status: 409, sessionId, isNew },
+        );
+      }
     }
 
     const quotaAfter = await getQuotaStatus({ ip, sessionId: quotaSessionId });

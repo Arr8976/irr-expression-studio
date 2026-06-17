@@ -73,7 +73,9 @@ export function AuthBar({
       )}
       {!googleEnabled && !kakaoEnabled && (
         <span className="text-xs text-slate-500">
-          로그인 설정 필요 (.env.local 확인)
+          {process.env.NODE_ENV === "development"
+            ? "로그인 설정 필요 (.env.local의 AUTH_GOOGLE_* 확인)"
+            : "로그인 준비 중입니다 (Vercel 환경변수 설정 필요)"}
         </span>
       )}
     </div>

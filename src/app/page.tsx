@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
+import { dataUrlToObjectUrl, revokeObjectUrl } from "@/lib/data-url-to-object-url";
 import { prepareImageForUpload } from "@/lib/prepare-upload-image";
 import { readApiJson } from "@/lib/read-api-response";
 import { SFW_UPLOAD_NOTICE } from "@/lib/gemini-safety";
@@ -29,6 +30,7 @@ type TransformResponse = {
   warning?: string;
   note?: string;
   imageDataUrl?: string;
+  imageUrl?: string;
   seed?: number;
   seedLocked?: boolean;
   seedSupported?: boolean;
@@ -76,6 +78,9 @@ export default function Home() {
     google: false,
     kakao: false,
   });
+  const transformAbortRef = useRef<AbortController | null>(null);
+  const transformSeqRef = useRef(0);
+  const filePrepSeqRef = useRef(0);
 
   const trimmedCustomPrompt = customPrompt.trim();
   const hasCustomPrompt = trimmedCustomPrompt.length > 0;
@@ -160,6 +165,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      transformAbortRef.current?.abort();
+      revokeObjectUrl(previewUrl);
+      if (result?.imageUrl) revokeObjectUrl(result.imageUrl);
+      for (const item of pinnedResults) {
+        revokeObjectUrl(item.imageUrl);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount cleanup only
+  }, []);
+
+  useEffect(() => {
     setLockedSeed(null);
   }, [presetId, file, isCustomPromptActive]);
 
@@ -203,9 +220,9 @@ export default function Home() {
   );
 
   const isCurrentResultPinned = useMemo(() => {
-    if (!result?.imageDataUrl) return false;
-    return pinnedResults.some((item) => item.imageDataUrl === result.imageDataUrl);
-  }, [pinnedResults, result?.imageDataUrl]);
+    if (!result?.imageUrl) return false;
+    return pinnedResults.some((item) => item.imageUrl === result.imageUrl);
+  }, [pinnedResults, result?.imageUrl]);
 
   async function onFileChange(next: File | null) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -213,27 +230,34 @@ export default function Home() {
     if (!next) {
       setFile(null);
       setPreviewUrl(null);
+      if (result?.imageUrl) revokeObjectUrl(result.imageUrl);
       setResult(null);
       setError(null);
       return;
     }
 
+    const prepSeq = ++filePrepSeqRef.current;
     setPreparingImage(true);
     setError(null);
 
     try {
       const prepared = await prepareImageForUpload(next);
+      if (prepSeq !== filePrepSeqRef.current) return;
       setFile(prepared);
       setPreviewUrl(URL.createObjectURL(prepared));
+      if (result?.imageUrl) revokeObjectUrl(result.imageUrl);
       setResult(null);
     } catch {
+      if (prepSeq !== filePrepSeqRef.current) return;
       setFile(null);
       setPreviewUrl(null);
       setError(
         "이미지를 처리할 수 없습니다. PNG, JPG, WEBP 파일을 다시 선택해 주세요.",
       );
     } finally {
-      setPreparingImage(false);
+      if (prepSeq === filePrepSeqRef.current) {
+        setPreparingImage(false);
+      }
     }
   }
 
@@ -246,15 +270,15 @@ export default function Home() {
     await onFileChange(next);
   }
 
-  function downloadResult(imageDataUrl: string, presetLabel: string) {
+  function downloadResult(imageUrl: string, presetLabel: string) {
     const link = document.createElement("a");
-    link.href = imageDataUrl;
+    link.href = imageUrl;
     link.download = `irr-expression-${presetLabel.replace(/\s+/g, "-")}.png`;
     link.click();
   }
 
   async function runTransform(options?: { useRandomSeed?: boolean }) {
-    if (!file) return;
+    if (!file || loading) return;
 
     const useCustom = isCustomPromptActive;
     if (!useCustom && !presetId) return;
@@ -269,8 +293,14 @@ export default function Home() {
       return;
     }
 
+    const seq = ++transformSeqRef.current;
+    transformAbortRef.current?.abort();
+    const abortController = new AbortController();
+    transformAbortRef.current = abortController;
+
     setLoading(true);
     setError(null);
+    if (result?.imageUrl) revokeObjectUrl(result.imageUrl);
     setResult(null);
 
     const form = new FormData();
@@ -295,7 +325,10 @@ export default function Home() {
       const res = await fetch("/api/transform", {
         method: "POST",
         body: form,
+        signal: abortController.signal,
       });
+      if (seq !== transformSeqRef.current) return;
+
       const data = await readApiJson<TransformResponse>(res);
       if (!res.ok) {
         updateUsageHints(data);
@@ -308,11 +341,22 @@ export default function Home() {
           : "이번 변환은 크레딧을 사용했습니다";
         setQuotaHint((prev) => (prev ? `${prev} · ${creditNote}` : creditNote));
       }
-      setResult(data);
+
+      let imageUrl: string | undefined;
+      if (data.imageDataUrl) {
+        imageUrl = dataUrlToObjectUrl(data.imageDataUrl);
+      }
+
+      const { imageDataUrl: _discard, ...rest } = data;
+      setResult({ ...rest, imageUrl });
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (seq !== transformSeqRef.current) return;
       setError(err instanceof Error ? err.message : "알 수 없는 오류");
     } finally {
-      setLoading(false);
+      if (seq === transformSeqRef.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -326,12 +370,12 @@ export default function Home() {
   }
 
   function pinCurrentResult() {
-    if (!result?.imageDataUrl) return;
+    if (!result?.imageUrl) return;
     if (isCurrentResultPinned) return;
 
     const entry: PinnedResult = {
       id: crypto.randomUUID(),
-      imageDataUrl: result.imageDataUrl,
+      imageUrl: result.imageUrl,
       presetLabel: result.preset.label,
       presetEmoji: result.preset.emoji,
       seed: result.seed,
@@ -346,7 +390,18 @@ export default function Home() {
   }
 
   function removePinned(id: string) {
-    setPinnedResults((prev) => prev.filter((item) => item.id !== id));
+    setPinnedResults((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) revokeObjectUrl(target.imageUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  }
+
+  function clearPinned() {
+    setPinnedResults((prev) => {
+      for (const item of prev) revokeObjectUrl(item.imageUrl);
+      return [];
+    });
   }
 
   return (
@@ -651,18 +706,18 @@ export default function Home() {
                             : result.customPrompt}”
                         </span>
                       )}
-                      {result.imageDataUrl && (
+                      {result.imageUrl && (
                         <button
                           type="button"
                           onClick={() =>
-                            downloadResult(result.imageDataUrl!, result.preset.label)
+                            downloadResult(result.imageUrl!, result.preset.label)
                           }
                           className="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 text-emerald-300 transition hover:bg-emerald-500/20"
                         >
                           PNG 다운로드
                         </button>
                       )}
-                      {result.imageDataUrl && (
+                      {result.imageUrl && (
                         <button
                           type="button"
                           onClick={pinCurrentResult}
@@ -687,11 +742,11 @@ export default function Home() {
                         </button>
                       )}
                     </div>
-                    {result.imageDataUrl && (
+                    {result.imageUrl && (
                       <div className="overflow-hidden rounded-xl border border-slate-800">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={result.imageDataUrl}
+                          src={result.imageUrl}
                           alt="변환 결과"
                           className="max-h-[520px] w-full object-contain bg-slate-950"
                         />
@@ -714,8 +769,8 @@ export default function Home() {
             <PinnedTray
               items={pinnedResults}
               onRemove={removePinned}
-              onClear={() => setPinnedResults([])}
-              onDownload={(item) => downloadResult(item.imageDataUrl, item.presetLabel)}
+              onClear={clearPinned}
+              onDownload={(item) => downloadResult(item.imageUrl, item.presetLabel)}
               onApplySeed={setLockedSeed}
             />
           </aside>

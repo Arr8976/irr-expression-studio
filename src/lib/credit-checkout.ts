@@ -1,7 +1,7 @@
 import { getCreditPackageById } from "./credit-packages";
 import {
   getPaymentOrder,
-  markPaymentOrderPaid,
+  claimPaymentOrder,
   type PaymentOrder,
 } from "./payment-orders";
 import {
@@ -77,21 +77,40 @@ export async function fulfillCreditPurchase(
     throw new Error("order is not payable");
   }
 
-  if (isPaymentMockEnabled() && !isTossPaymentsConfigured()) {
-    assertOrderMatchesSession(order, input.sessionId);
-    await markPaymentOrderPaid({
+  async function claimAndGrant(paymentKey: string) {
+    const claim = await claimPaymentOrder({
       orderId: order.orderId,
-      paymentKey: input.paymentKey ?? "mock-payment",
+      paymentKey,
     });
-    const paidOrder = await getPaymentOrder(order.orderId);
-    if (!paidOrder) {
-      throw new Error("order not found after payment");
+
+    if (claim === "already_paid") {
+      const paidOrder = await getPaymentOrder(order.orderId);
+      if (!paidOrder) throw new Error("order not found");
+      return {
+        order: paidOrder,
+        credits: await getCreditStatus(creditAccountKey),
+        mode: (isPaymentMockEnabled() ? "mock" : "toss") as "mock" | "toss",
+      };
     }
+
+    if (claim !== "claimed") {
+      throw new Error("order is not payable");
+    }
+
+    const credits = await grantCredits(creditAccountKey, order.packageId);
+    const paidOrder = await getPaymentOrder(order.orderId);
+    if (!paidOrder) throw new Error("order not found after payment");
+
     return {
       order: paidOrder,
-      credits: await grantCredits(creditAccountKey, order.packageId),
-      mode: "mock",
+      credits,
+      mode: (isPaymentMockEnabled() ? "mock" : "toss") as "mock" | "toss",
     };
+  }
+
+  if (isPaymentMockEnabled() && !isTossPaymentsConfigured()) {
+    assertOrderMatchesSession(order, input.sessionId);
+    return claimAndGrant(input.paymentKey ?? "mock-payment");
   }
 
   if (!input.paymentKey) {
@@ -108,21 +127,7 @@ export async function fulfillCreditPurchase(
     throw new Error("confirmed payment does not match order");
   }
 
-  await markPaymentOrderPaid({
-    orderId: order.orderId,
-    paymentKey: payment.paymentKey,
-  });
-
-  const paidOrder = await getPaymentOrder(order.orderId);
-  if (!paidOrder) {
-    throw new Error("order not found after payment");
-  }
-
-  return {
-    order: paidOrder,
-    credits: await grantCredits(creditAccountKey, order.packageId),
-    mode: "toss",
-  };
+  return claimAndGrant(payment.paymentKey);
 }
 
 export function getPaymentAvailability() {

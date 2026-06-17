@@ -2,6 +2,8 @@ import { todayKey } from "./daily-quota";
 import {
   readSessionCredits,
   writeSessionCredits,
+  tryAcquireMergeLock,
+  releaseMergeLock,
   type SessionCreditsRow,
 } from "./credit-storage";
 
@@ -32,24 +34,6 @@ export function mergeCreditRows(
   };
 }
 
-async function readMergeFlag(
-  userAccountKey: string,
-  guestSessionId: string,
-): Promise<boolean> {
-  const flagKey = `${MERGE_FLAG_PREFIX}${userAccountKey}:${guestSessionId}`;
-  const row = await readSessionCredits(flagKey);
-  return row?.used === 1;
-}
-
-async function writeMergeFlag(
-  userAccountKey: string,
-  guestSessionId: string,
-  dateKey: string,
-) {
-  const flagKey = `${MERGE_FLAG_PREFIX}${userAccountKey}:${guestSessionId}`;
-  await writeSessionCredits(flagKey, { dateKey, dailyLimit: 1, used: 1 });
-}
-
 async function clearGuestCredits(guestSessionId: string, dateKey: string) {
   await writeSessionCredits(guestSessionId, {
     dateKey,
@@ -69,26 +53,49 @@ export async function mergeGuestCreditsIntoUser(input: {
 
   const dateKey = todayKey(input.now);
 
-  if (input.skipIfMerged !== false) {
-    const alreadyMerged = await readMergeFlag(
-      input.userAccountKey,
-      input.guestSessionId,
-    );
-    if (alreadyMerged) return false;
+  const acquired = await tryAcquireMergeLock({
+    userAccountKey: input.userAccountKey,
+    guestSessionId: input.guestSessionId,
+  });
+  if (!acquired) return false;
+
+  try {
+    const guest = await readSessionCredits(input.guestSessionId);
+    if (!guest) {
+      await releaseMergeLock({
+        userAccountKey: input.userAccountKey,
+        guestSessionId: input.guestSessionId,
+      });
+      return false;
+    }
+
+    const guestBalance = Math.max(0, guest.dailyLimit - guest.used);
+    if (guestBalance <= 0 && guest.dailyLimit <= 0) {
+      await releaseMergeLock({
+        userAccountKey: input.userAccountKey,
+        guestSessionId: input.guestSessionId,
+      });
+      return false;
+    }
+
+    const user = await readSessionCredits(input.userAccountKey);
+    const merged = mergeCreditRows(user, guest, dateKey);
+    if (!merged) {
+      await releaseMergeLock({
+        userAccountKey: input.userAccountKey,
+        guestSessionId: input.guestSessionId,
+      });
+      return false;
+    }
+
+    await writeSessionCredits(input.userAccountKey, merged);
+    await clearGuestCredits(input.guestSessionId, dateKey);
+    return true;
+  } catch (error) {
+    await releaseMergeLock({
+      userAccountKey: input.userAccountKey,
+      guestSessionId: input.guestSessionId,
+    });
+    throw error;
   }
-
-  const guest = await readSessionCredits(input.guestSessionId);
-  if (!guest) return false;
-
-  const guestBalance = Math.max(0, guest.dailyLimit - guest.used);
-  if (guestBalance <= 0 && guest.dailyLimit <= 0) return false;
-
-  const user = await readSessionCredits(input.userAccountKey);
-  const merged = mergeCreditRows(user, guest, dateKey);
-  if (!merged) return false;
-
-  await writeSessionCredits(input.userAccountKey, merged);
-  await clearGuestCredits(input.guestSessionId, dateKey);
-  await writeMergeFlag(input.userAccountKey, input.guestSessionId, dateKey);
-  return true;
 }

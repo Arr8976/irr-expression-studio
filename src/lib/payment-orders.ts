@@ -3,6 +3,8 @@ import {
   readPaymentOrder,
   writePaymentOrder,
   resetCreditStorageForTests,
+  tryClaimPaymentOrder,
+  type PaymentClaimResult,
   type PaymentOrderRow,
 } from "./credit-storage";
 
@@ -51,20 +53,19 @@ export async function markPaymentOrderPaid(input: {
   orderId: string;
   paymentKey: string;
 }): Promise<PaymentOrder | null> {
-  const order = await readPaymentOrder(input.orderId);
-  if (!order) return null;
+  const claim = await tryClaimPaymentOrder(input);
+  if (claim === "not_found") return null;
+  if (claim === "not_pending") return null;
+  return readPaymentOrder(input.orderId);
+}
 
-  if (order.status === "paid") {
-    return order;
-  }
+export { type PaymentClaimResult };
 
-  const paid: PaymentOrder = {
-    ...order,
-    status: "paid",
-    paymentKey: input.paymentKey,
-  };
-  await writePaymentOrder(paid);
-  return paid;
+export async function claimPaymentOrder(input: {
+  orderId: string;
+  paymentKey: string;
+}): Promise<PaymentClaimResult> {
+  return tryClaimPaymentOrder(input);
 }
 
 export async function markPaymentOrderFailed(orderId: string) {

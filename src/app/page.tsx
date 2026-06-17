@@ -69,11 +69,13 @@ export default function Home() {
   const [creditDailyLimit, setCreditDailyLimit] = useState(0);
   const [preparingImage, setPreparingImage] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [customPromptEnabled, setCustomPromptEnabled] = useState(false);
   const [combinePresetWithCustom, setCombinePresetWithCustom] = useState(true);
 
   const trimmedCustomPrompt = customPrompt.trim();
   const hasCustomPrompt = trimmedCustomPrompt.length > 0;
   const canUseCustomPrompt = creditBalance > 0;
+  const isCustomPromptActive = customPromptEnabled && hasCustomPrompt;
 
   function formatCreditHint(balance: number, dailyLimit?: number) {
     if (dailyLimit != null && dailyLimit > 0) {
@@ -142,13 +144,13 @@ export default function Home() {
 
   useEffect(() => {
     setLockedSeed(null);
-  }, [presetId, file, trimmedCustomPrompt]);
+  }, [presetId, file, isCustomPromptActive]);
 
   useEffect(() => {
-    if (!canUseCustomPrompt && hasCustomPrompt) {
-      setCustomPrompt("");
+    if (!canUseCustomPrompt && customPromptEnabled) {
+      setCustomPromptEnabled(false);
     }
-  }, [canUseCustomPrompt, hasCustomPrompt]);
+  }, [canUseCustomPrompt, customPromptEnabled]);
 
   useEffect(() => {
     if (!loading) {
@@ -237,11 +239,16 @@ export default function Home() {
   async function runTransform(options?: { useRandomSeed?: boolean }) {
     if (!file) return;
 
-    const useCustom = hasCustomPrompt;
+    const useCustom = isCustomPromptActive;
     if (!useCustom && !presetId) return;
 
-    if (useCustom && !canUseCustomPrompt) {
+    if (customPromptEnabled && hasCustomPrompt && !canUseCustomPrompt) {
       setError("프롬프트 표정은 오늘 사용 가능한 크레딧이 있을 때만 이용할 수 있습니다.");
+      return;
+    }
+
+    if (customPromptEnabled && !hasCustomPrompt) {
+      setError("프롬프트 표정을 사용하려면 표정 설명을 입력해 주세요.");
       return;
     }
 
@@ -451,31 +458,57 @@ export default function Home() {
                   })}
                 </div>
 
-            {selectedPreset && !hasCustomPrompt && (
+            {selectedPreset && !isCustomPromptActive && (
               <p className="mt-4 rounded-lg bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
                 {selectedPreset.description}
               </p>
             )}
 
-            <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-slate-200">
-                  프롬프트 표정 {canUseCustomPrompt ? "(크레딧 전용)" : ""}
-                </h3>
-                {!canUseCustomPrompt && (
-                  <span className="text-xs text-slate-500">크레딧 충전 후 사용</span>
-                )}
+            <div
+              className={`mt-5 rounded-xl border p-4 transition ${
+                customPromptEnabled
+                  ? "border-emerald-500/40 bg-emerald-500/5"
+                  : "border-slate-700 bg-slate-950/50"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <label className="inline-flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={customPromptEnabled}
+                    onChange={(e) => setCustomPromptEnabled(e.target.checked)}
+                    disabled={!canUseCustomPrompt || loading}
+                    className="mt-0.5 rounded border-slate-600 bg-slate-950"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-200">
+                      프롬프트 표정 사용
+                    </span>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {canUseCustomPrompt
+                        ? "켜면 크레딧 1회 · 끄면 선택한 프리셋만 적용"
+                        : "크레딧 충전 후 사용할 수 있습니다"}
+                    </span>
+                  </span>
+                </label>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs ${
+                    isCustomPromptActive
+                      ? "bg-amber-500/15 text-amber-200"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {isCustomPromptActive ? "다음: 프롬프트" : "다음: 프리셋만"}
+                </span>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
                 원하는 표정을 직접 입력할 수 있습니다. 여러 느낌을 섞어도 됩니다.
-                {canUseCustomPrompt
-                  ? " 실행 시 크레딧 1회가 사용됩니다."
-                  : " 오늘 사용 가능한 크레딧이 있을 때만 열립니다."}
+                끄면 입력 내용은 남지만 프리셋 변환에는 영향을 주지 않습니다.
               </p>
               <textarea
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                disabled={!canUseCustomPrompt || loading}
+                disabled={!customPromptEnabled || !canUseCustomPrompt || loading}
                 maxLength={CUSTOM_PROMPT_MAX_LENGTH}
                 rows={3}
                 placeholder={
@@ -489,7 +522,7 @@ export default function Home() {
                 <span>
                   {customPrompt.length}/{CUSTOM_PROMPT_MAX_LENGTH}
                 </span>
-                {hasCustomPrompt && selectedPreset && (
+                {isCustomPromptActive && selectedPreset && (
                   <label className="inline-flex items-center gap-2 text-slate-400">
                     <input
                       type="checkbox"
@@ -502,7 +535,7 @@ export default function Home() {
                   </label>
                 )}
               </div>
-              {hasCustomPrompt && (
+              {isCustomPromptActive && (
                 <p className="mt-2 text-xs text-amber-200/90">
                   프롬프트 표정은 무료 횟수와 관계없이 크레딧 1회가 차감됩니다. 결과는
                   실험 기능이라 편차가 클 수 있습니다.
@@ -525,7 +558,7 @@ export default function Home() {
 
                 <button
                   type="button"
-                  disabled={!file || loading || (!hasCustomPrompt && !presetId)}
+                  disabled={!file || loading || (customPromptEnabled && !hasCustomPrompt) || (!isCustomPromptActive && !presetId)}
                   onClick={onSubmit}
                   className="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >

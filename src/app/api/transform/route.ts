@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
 import {
-  buildFacsPrompt,
+  buildCustomExpressionPrompt,
+  buildPresetExpressionPrompt,
+  CUSTOM_EXPRESSION_PRESET,
+  CUSTOM_PROMPT_MAX_LENGTH,
+  normalizeCustomPrompt,
+  resolveExpressionSource,
+  validateCustomPrompt,
+} from "@/lib/custom-expression-prompt";
+import {
   getPresetById,
+  type FacsPreset,
 } from "@/lib/facs-presets";
 import {
   consumeQuota,
@@ -68,6 +77,24 @@ async function loadReferenceGrid(): Promise<Buffer | null> {
   }
 }
 
+function responsePreset(
+  preset: FacsPreset | null,
+  customPrompt: string | null,
+): FacsPreset {
+  if (customPrompt && !preset) {
+    return {
+      ...CUSTOM_EXPRESSION_PRESET,
+      description:
+        customPrompt.length > 80
+          ? `${customPrompt.slice(0, 80)}…`
+          : customPrompt,
+    };
+  }
+
+  if (preset) return preset;
+  return CUSTOM_EXPRESSION_PRESET;
+}
+
 export async function POST(request: NextRequest) {
   const { sessionId, isNew } = getOrCreateSessionId(request);
   const ip = getClientIp(request);
@@ -76,8 +103,46 @@ export async function POST(request: NextRequest) {
   let billingSource: "free" | "credit" | null = null;
 
   try {
+    const form = await request.formData();
+    const file = form.get("image");
+    const presetId = String(form.get("presetId") ?? "").trim();
+    const customPrompt = normalizeCustomPrompt(form.get("customPrompt"));
+    const requestedSeed = parseTransformSeed(form.get("seed"));
+    const expressionSource = resolveExpressionSource({
+      customPrompt,
+      presetId: presetId || null,
+    });
+
+    if (customPrompt) {
+      const validation = validateCustomPrompt(customPrompt);
+      if (!validation.ok) {
+        return jsonWithSessionCookie(
+          {
+            error: validation.error,
+            quota: quotaPayload(quotaBefore),
+            credits: await creditsPayload(sessionId),
+          },
+          { status: 400, sessionId, isNew },
+        );
+      }
+
+      if (creditsBefore <= 0) {
+        return jsonWithSessionCookie(
+          {
+            error:
+              "프롬프트 표정은 오늘 사용 가능한 크레딧이 있을 때만 이용할 수 있습니다.",
+            quota: quotaPayload(quotaBefore),
+            credits: await creditsPayload(sessionId),
+          },
+          { status: 403, sessionId, isNew },
+        );
+      }
+    }
+
     if (!isQuotaBypassed()) {
-      if (quotaBefore.allowed) {
+      if (customPrompt) {
+        billingSource = "credit";
+      } else if (quotaBefore.allowed) {
         billingSource = "free";
       } else if (creditsBefore > 0) {
         billingSource = "credit";
@@ -93,11 +158,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const form = await request.formData();
-    const file = form.get("image");
-    const presetId = String(form.get("presetId") ?? "");
-    const requestedSeed = parseTransformSeed(form.get("seed"));
-
     if (!(file instanceof File)) {
       return jsonWithSessionCookie(
         { error: "image file is required", quota: quotaPayload(quotaBefore), credits: await creditsPayload(sessionId) },
@@ -105,10 +165,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const preset = getPresetById(presetId);
-    if (!preset) {
+    const preset = presetId ? getPresetById(presetId) ?? null : null;
+
+    if (expressionSource === "preset" && !preset) {
       return jsonWithSessionCookie(
         { error: "invalid presetId", quota: quotaPayload(quotaBefore), credits: await creditsPayload(sessionId) },
+        { status: 400, sessionId, isNew },
+      );
+    }
+
+    if (expressionSource !== "preset" && !customPrompt) {
+      return jsonWithSessionCookie(
+        {
+          error: "표정 프리셋을 선택하거나 프롬프트를 입력해 주세요.",
+          quota: quotaPayload(quotaBefore),
+          credits: await creditsPayload(sessionId),
+        },
         { status: 400, sessionId, isNew },
       );
     }
@@ -130,7 +202,14 @@ export async function POST(request: NextRequest) {
     }
 
     const mimeType = file.type || "image/png";
-    const prompt = buildFacsPrompt(preset.auCodes);
+    const prompt =
+      expressionSource === "preset" && preset
+        ? buildPresetExpressionPrompt(preset.auCodes)
+        : buildCustomExpressionPrompt({
+            customPrompt: customPrompt!,
+            preset,
+          });
+    const resultPreset = responsePreset(preset, customPrompt);
     const reference = await loadReferenceGrid();
     const { provider } = resolveTransformTarget();
 
@@ -169,7 +248,7 @@ export async function POST(request: NextRequest) {
 
         if (provider === "gemini" && "usage" in result && result.usage) {
           usage = result.usage;
-          logGeminiUsage(result.usage, presetId);
+          logGeminiUsage(result.usage, resultPreset.id);
         }
       } catch (error) {
         if (error instanceof GeminiTransformRejectedError) {
@@ -198,9 +277,9 @@ export async function POST(request: NextRequest) {
     } else {
       outputBuffer = await applyMockTransform(
         imageBuffer,
-        preset.label,
-        preset.auCodes,
-        `${preset.label} · ${mockModeNote()}`,
+        resultPreset.label,
+        resultPreset.auCodes,
+        customPrompt ?? `${resultPreset.label} · ${mockModeNote()}`,
       );
     }
 
@@ -215,7 +294,9 @@ export async function POST(request: NextRequest) {
     return jsonWithSessionCookie(
       {
         mode,
-        preset,
+        preset: resultPreset,
+        expressionSource,
+        customPrompt: customPrompt ?? undefined,
         prompt,
         model,
         seed,

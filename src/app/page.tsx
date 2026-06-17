@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
+import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
 import { prepareImageForUpload } from "@/lib/prepare-upload-image";
 import { readApiJson } from "@/lib/read-api-response";
 import { SFW_UPLOAD_NOTICE } from "@/lib/gemini-safety";
@@ -41,6 +42,8 @@ type TransformResponse = {
     used?: number;
   };
   billingSource?: "free" | "credit";
+  expressionSource?: "preset" | "custom" | "hybrid";
+  customPrompt?: string;
   preset: {
     id: string;
     label: string;
@@ -65,6 +68,12 @@ export default function Home() {
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditDailyLimit, setCreditDailyLimit] = useState(0);
   const [preparingImage, setPreparingImage] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [combinePresetWithCustom, setCombinePresetWithCustom] = useState(true);
+
+  const trimmedCustomPrompt = customPrompt.trim();
+  const hasCustomPrompt = trimmedCustomPrompt.length > 0;
+  const canUseCustomPrompt = creditBalance > 0;
 
   function formatCreditHint(balance: number, dailyLimit?: number) {
     if (dailyLimit != null && dailyLimit > 0) {
@@ -133,7 +142,13 @@ export default function Home() {
 
   useEffect(() => {
     setLockedSeed(null);
-  }, [presetId, file]);
+  }, [presetId, file, trimmedCustomPrompt]);
+
+  useEffect(() => {
+    if (!canUseCustomPrompt && hasCustomPrompt) {
+      setCustomPrompt("");
+    }
+  }, [canUseCustomPrompt, hasCustomPrompt]);
 
   useEffect(() => {
     if (!loading) {
@@ -220,14 +235,31 @@ export default function Home() {
   }
 
   async function runTransform(options?: { useRandomSeed?: boolean }) {
-    if (!file || !presetId) return;
+    if (!file) return;
+
+    const useCustom = hasCustomPrompt;
+    if (!useCustom && !presetId) return;
+
+    if (useCustom && !canUseCustomPrompt) {
+      setError("프롬프트 표정은 오늘 사용 가능한 크레딧이 있을 때만 이용할 수 있습니다.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     const form = new FormData();
     form.append("image", file);
-    form.append("presetId", presetId);
+
+    if (useCustom) {
+      form.append("customPrompt", trimmedCustomPrompt);
+      if (combinePresetWithCustom && presetId) {
+        form.append("presetId", presetId);
+      }
+    } else {
+      form.append("presetId", presetId);
+    }
 
     const seedToUse = options?.useRandomSeed === true ? null : lockedSeed;
 
@@ -247,9 +279,10 @@ export default function Home() {
       }
       updateUsageHints(data);
       if (data.billingSource === "credit") {
-        setQuotaHint((prev) =>
-          prev ? `${prev} · 이번 변환은 크레딧 사용` : "이번 변환은 크레딧을 사용했습니다",
-        );
+        const creditNote = useCustom
+          ? "이번 변환은 프롬프트 표정(크레딧)을 사용했습니다"
+          : "이번 변환은 크레딧을 사용했습니다";
+        setQuotaHint((prev) => (prev ? `${prev} · ${creditNote}` : creditNote));
       }
       setResult(data);
     } catch (err) {
@@ -392,7 +425,7 @@ export default function Home() {
 
               <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 className="mb-4 text-lg font-semibold">2. 표정 프리셋</h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {EXPRESSION_PRESETS.map((preset) => {
                     const active = preset.id === presetId;
                     return (
@@ -400,12 +433,17 @@ export default function Home() {
                         key={preset.id}
                         type="button"
                         onClick={() => setPresetId(preset.id)}
-                        className={`rounded-xl border px-3 py-3 text-left transition ${
+                        className={`relative rounded-xl border px-3 py-3 text-left transition ${
                           active
                             ? "border-emerald-400 bg-emerald-500/10"
                             : "border-slate-700 bg-slate-950/50 hover:border-slate-500"
                         }`}
                       >
+                        {preset.tier === "beta" && (
+                          <span className="absolute right-2 top-2 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-200">
+                            실험
+                          </span>
+                        )}
                         <div className="text-2xl">{preset.emoji}</div>
                         <div className="mt-1 text-sm font-medium">{preset.label}</div>
                       </button>
@@ -413,11 +451,64 @@ export default function Home() {
                   })}
                 </div>
 
-            {selectedPreset && (
+            {selectedPreset && !hasCustomPrompt && (
               <p className="mt-4 rounded-lg bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
                 {selectedPreset.description}
               </p>
             )}
+
+            <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-200">
+                  프롬프트 표정 {canUseCustomPrompt ? "(크레딧 전용)" : ""}
+                </h3>
+                {!canUseCustomPrompt && (
+                  <span className="text-xs text-slate-500">크레딧 충전 후 사용</span>
+                )}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                원하는 표정을 직접 입력할 수 있습니다. 여러 느낌을 섞어도 됩니다.
+                {canUseCustomPrompt
+                  ? " 실행 시 크레딧 1회가 사용됩니다."
+                  : " 오늘 사용 가능한 크레딧이 있을 때만 열립니다."}
+              </p>
+              <textarea
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                disabled={!canUseCustomPrompt || loading}
+                maxLength={CUSTOM_PROMPT_MAX_LENGTH}
+                rows={3}
+                placeholder={
+                  canUseCustomPrompt
+                    ? "예: 살짝 웃는데 눈은 슬퍼 보이게 / 미소 + 살짝 놀란 눈"
+                    : "크레딧을 충전하면 프롬프트 표정을 사용할 수 있습니다"
+                }
+                className="mt-3 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                <span>
+                  {customPrompt.length}/{CUSTOM_PROMPT_MAX_LENGTH}
+                </span>
+                {hasCustomPrompt && selectedPreset && (
+                  <label className="inline-flex items-center gap-2 text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={combinePresetWithCustom}
+                      onChange={(e) => setCombinePresetWithCustom(e.target.checked)}
+                      disabled={loading}
+                      className="rounded border-slate-600 bg-slate-950"
+                    />
+                    선택한 프리셋({selectedPreset.label})과 함께 적용
+                  </label>
+                )}
+              </div>
+              {hasCustomPrompt && (
+                <p className="mt-2 text-xs text-amber-200/90">
+                  프롬프트 표정은 무료 횟수와 관계없이 크레딧 1회가 차감됩니다. 결과는
+                  실험 기능이라 편차가 클 수 있습니다.
+                </p>
+              )}
+            </div>
 
             {quotaHint && (
               <p className="mt-4 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-400">
@@ -434,7 +525,7 @@ export default function Home() {
 
                 <button
                   type="button"
-                  disabled={!file || loading}
+                  disabled={!file || loading || (!hasCustomPrompt && !presetId)}
                   onClick={onSubmit}
                   className="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -489,8 +580,19 @@ export default function Home() {
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <span className="rounded-full bg-slate-800 px-3 py-1">
-                        프리셋: {result.preset.emoji} {result.preset.label}
+                        {result.expressionSource === "custom" ||
+                        result.expressionSource === "hybrid"
+                          ? "프롬프트"
+                          : "프리셋"}
+                        : {result.preset.emoji} {result.preset.label}
                       </span>
+                      {result.customPrompt && (
+                        <span className="rounded-full bg-slate-800 px-3 py-1 text-slate-300">
+                          “{result.customPrompt.length > 36
+                            ? `${result.customPrompt.slice(0, 36)}…`
+                            : result.customPrompt}”
+                        </span>
+                      )}
                       {result.imageDataUrl && (
                         <button
                           type="button"

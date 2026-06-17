@@ -1,9 +1,12 @@
+export type FacsPresetTier = "stable" | "beta";
+
 export type FacsPreset = {
   id: string;
   label: string;
   emoji: string;
   auCodes: string[];
   description: string;
+  tier?: FacsPresetTier;
 };
 
 /** Article reference: FACS Action Units for AI image expression control */
@@ -14,6 +17,7 @@ export const FACS_UNITS: Record<string, string> = {
   AU5: "Upper Lid Raiser",
   AU6: "Cheek Raiser",
   AU7: "Lid Tightener",
+  AU8: "Lips Toward Each Other",
   AU9: "Nose Wrinkler",
   AU10: "Upper Lip Raiser",
   AU11: "Nasolabial Deepener",
@@ -141,8 +145,65 @@ export const EXPRESSION_PRESETS: FacsPreset[] = [
     id: "side_eye",
     label: "시선 이동",
     emoji: "🙄",
-    auCodes: ["AU62", "AU4"],
-    description: "시선을 옆으로 돌린 표정",
+    auCodes: ["AU62"],
+    description: "시선을 옆으로 돌린 표정 (실험)",
+    tier: "beta",
+  },
+  {
+    id: "neutral",
+    label: "무표정",
+    emoji: "😐",
+    auCodes: ["AU23", "AU24"],
+    description: "감정을 드러내지 않은 차분한 표정",
+  },
+  {
+    id: "contempt",
+    label: "경멸",
+    emoji: "😒",
+    auCodes: ["AU10", "AU4"],
+    description: "한쪽 입꼬리와 눈썹이 올라간 표정",
+  },
+  {
+    id: "fear",
+    label: "두려움",
+    emoji: "😨",
+    auCodes: ["AU1", "AU2", "AU4", "AU5", "AU20"],
+    description: "눈썹·눈이 올라가고 입이 늘어난 긴장된 표정",
+  },
+  {
+    id: "thinking",
+    label: "생각",
+    emoji: "🤔",
+    auCodes: ["AU4", "AU17"],
+    description: "눈썹을 내리고 턱을 올린 생각하는 표정",
+  },
+  {
+    id: "speaking",
+    label: "말하려는",
+    emoji: "😯",
+    auCodes: ["AU25", "AU26"],
+    description: "입을 살짝 벌린 말하려는 표정",
+  },
+  {
+    id: "lips_together",
+    label: "입 오므림",
+    emoji: "🫢",
+    auCodes: ["AU8", "AU23"],
+    description: "입술을 다문 단단한 표정",
+  },
+  {
+    id: "big_laugh",
+    label: "활짝 웃음",
+    emoji: "🤣",
+    auCodes: ["AU6", "AU12", "AU25", "AU26"],
+    description: "입을 크게 벌린 활짝 웃는 표정",
+  },
+  {
+    id: "disgust",
+    label: "찡그림",
+    emoji: "🤢",
+    auCodes: ["AU9", "AU4"],
+    description: "코와 눈썹을 찡그린 표정",
   },
 ];
 

@@ -442,7 +442,7 @@ export async function tryAtomicConsumeCredit(input: {
        SET used = used + 1, updated_at = ?
        WHERE session_id = ? AND date_key = ? AND used < daily_limit`,
     )
-    .run(Date.now(), input.sessionId, input.dateKey);
+    .run(Date.now(), input.sessionId, input.dateKey) as { changes: number };
 
   return result.changes > 0;
 }
@@ -488,11 +488,20 @@ export async function tryAtomicConsumeFreeQuota(input: {
   }
 
   const db = getSqliteDb();
-  const consume = db.transaction(() => {
-    const readUsed = db.prepare(
-      `SELECT used FROM daily_quota
-       WHERE scope_type = ? AND scope_id = ? AND date_key = ?`,
-    );
+  const readUsed = db.prepare(
+    `SELECT used FROM daily_quota
+     WHERE scope_type = ? AND scope_id = ? AND date_key = ?`,
+  );
+  const upsert = db.prepare(
+    `INSERT INTO daily_quota (scope_type, scope_id, date_key, used, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(scope_type, scope_id, date_key) DO UPDATE SET
+       used = excluded.used,
+       updated_at = excluded.updated_at`,
+  );
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
     const ipRow = readUsed.get("ip", input.ip, input.dateKey) as
       | { used: number }
       | undefined;
@@ -503,23 +512,19 @@ export async function tryAtomicConsumeFreeQuota(input: {
     const sessionUsed = sessionRow?.used ?? 0;
 
     if (ipUsed >= input.limit || sessionUsed >= input.limit) {
+      db.exec("ROLLBACK");
       return false;
     }
 
-    const upsert = db.prepare(
-      `INSERT INTO daily_quota (scope_type, scope_id, date_key, used, updated_at)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(scope_type, scope_id, date_key) DO UPDATE SET
-         used = excluded.used,
-         updated_at = excluded.updated_at`,
-    );
     const now = Date.now();
     upsert.run("ip", input.ip, input.dateKey, ipUsed + 1, now);
     upsert.run("session", input.sessionId, input.dateKey, sessionUsed + 1, now);
+    db.exec("COMMIT");
     return true;
-  });
-
-  return consume();
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 export type PaymentClaimResult = "claimed" | "already_paid" | "not_found" | "not_pending";
@@ -585,7 +590,7 @@ export async function tryClaimPaymentOrder(input: {
        SET status = 'paid', payment_key = ?
        WHERE order_id = ? AND status = 'pending'`,
     )
-    .run(input.paymentKey, input.orderId);
+    .run(input.paymentKey, input.orderId) as { changes: number };
 
   if (result.changes > 0) return "claimed";
 

@@ -77,14 +77,16 @@ export async function fulfillCreditPurchase(
     throw new Error("order is not payable");
   }
 
+  const payableOrder = order;
+
   async function claimAndGrant(paymentKey: string) {
     const claim = await claimPaymentOrder({
-      orderId: order.orderId,
+      orderId: payableOrder.orderId,
       paymentKey,
     });
 
     if (claim === "already_paid") {
-      const paidOrder = await getPaymentOrder(order.orderId);
+      const paidOrder = await getPaymentOrder(payableOrder.orderId);
       if (!paidOrder) throw new Error("order not found");
       return {
         order: paidOrder,
@@ -97,8 +99,8 @@ export async function fulfillCreditPurchase(
       throw new Error("order is not payable");
     }
 
-    const credits = await grantCredits(creditAccountKey, order.packageId);
-    const paidOrder = await getPaymentOrder(order.orderId);
+    const credits = await grantCredits(creditAccountKey, payableOrder.packageId);
+    const paidOrder = await getPaymentOrder(payableOrder.orderId);
     if (!paidOrder) throw new Error("order not found after payment");
 
     return {

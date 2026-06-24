@@ -16,6 +16,10 @@ export function isTossPaymentsConfigured() {
 }
 
 export function isPaymentMockEnabled() {
+  // 프로덕션에서는 실수로 무료 크레딧이 지급되지 않도록 mock을 항상 끕니다.
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
   return process.env.PAYMENT_MOCK === "true";
 }
 

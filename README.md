@@ -104,13 +104,56 @@ Vercel은 **도메인 판매가 아니라 연결**만 합니다. 먼저 외부�
 
 ---
 
+## 실결제 전환 (Toss)
+
+### PAYMENT_MOCK
+
+- **로컬 개발:** `.env.local`에 `PAYMENT_MOCK=true` 가능 (결제창 없이 크레딧 테스트)
+- **Vercel 프로덕션:** `PAYMENT_MOCK` **설정하지 않거나 삭제**  
+  코드에서도 `NODE_ENV=production`이면 mock이 **강제 비활성화**됩니다.
+
+### 토스 라이브 키 발급
+
+1. [토스페이먼츠](https://www.tosspayments.com/) 가맹점 신청·심사
+2. 대시보드 → **API 키** → **라이브** 키 확인
+   - `NEXT_PUBLIC_TOSS_CLIENT_KEY` = `live_ck_...`
+   - `TOSS_SECRET_KEY` = `live_sk_...` (서버 전용, 절대 클라이언트에 노출 금지)
+3. Vercel에 반영 후 **Redeploy**
+4. 테스트 키(`test_ck_` / `test_sk_`)는 프로덕션 env에서 제거
+
+실결제 전에는 토스 **테스트 키**로 결제창·승인 플로우만 검증할 수 있습니다 (실제 출금 없음).
+
+---
+
+## JIKYU 도메인 구매 추천
+
+| 서비스 | 추천 대상 | 장점 | JIKYU에 맞는 TLD |
+|--------|-----------|------|------------------|
+| **[Cloudflare Registrar](https://www.cloudflare.com/products/registrar/)** | `.com` · `.dev` · `.io` | 갱신가 원가에 가깝, DNS·CDN 통합, WHOIS 프라이버시 | `jikyu.dev`, `jikyudev.com`, `jikyu.io` |
+| **[가비아](https://domain.gabia.com/)** | `.kr` · `.co.kr` | 한국어 지원, 국내 사업자·신뢰감 | `jikyu.kr`, `지큐.kr`(한글 도메인) |
+| **[Porkbun](https://porkbun.com/)** | Cloudflare 대안 | UI 단순, `.dev`·`.io` 가끔 저렴 | `jikyustudio.dev` 등 |
+
+### 이름 후보 (구매 전 가용성 검색)
+
+| 용도 | 후보 |
+|------|------|
+| 브랜드 허브 (JIKYU DEV) | `jikyu.dev`, `jikyudev.com`, `jikyu.io` |
+| 현재 앱 (JIKYU Studio) | `jikyustudio.com`, `studio.jikyu.dev` (서브도메인) |
+
+- **JIKYU DEV** = 개발·브랜드 사이트, **JIKYU Studio** = 표정 변환 앱으로 나누기 좋음  
+- `.dev`는 HTTPS 필수 TLD라 프로덕션에 잘 맞음  
+- Cloudflare에서 `jikyu.dev` 구매 → DNS에서 `studio.jikyu.dev`를 Vercel에 CNAME 연결 가능
+
+---
+
 ## 런칭 체크리스트
 
 - [x] 표정 변환 · 크레딧 · Google / Kakao 로그인
 - [x] JIKYU Studio 브랜딩
+- [x] 프로덕션 PAYMENT_MOCK 강제 비활성화 (코드)
+- [ ] Vercel에서 `PAYMENT_MOCK` 삭제 + Toss 라이브 키
 - [ ] 커스텀 도메인 + `AUTH_URL` / OAuth URI 갱신
-- [ ] (선택) Toss 라이브 키 전환
-- [ ] (선택) 이용약관 페이지
+- [ ] (선택) 이용약관·환불 안내 페이지
 
 ---
 

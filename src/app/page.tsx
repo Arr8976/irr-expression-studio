@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
+import { APP_NAME, APP_SLUG, APP_TAGLINE } from "@/lib/brand";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
 import { dataUrlToObjectUrl, revokeObjectUrl } from "@/lib/data-url-to-object-url";
 import { prepareImageForUpload } from "@/lib/prepare-upload-image";
@@ -277,7 +278,7 @@ export default function Home() {
   function downloadResult(imageUrl: string, presetLabel: string) {
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = `irr-expression-${presetLabel.replace(/\s+/g, "-")}.png`;
+    link.download = `${APP_SLUG}-${presetLabel.replace(/\s+/g, "-")}.png`;
     link.click();
   }
 
@@ -414,14 +415,14 @@ export default function Home() {
         <header className="mb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm text-emerald-400">IRR Expression Studio</p>
+              <p className="text-sm text-emerald-400">{APP_NAME}</p>
               <button
                 type="button"
                 onClick={() => window.location.assign("/")}
                 className="mt-2 block text-left text-3xl font-bold tracking-tight transition hover:text-emerald-300"
                 title="처음으로"
               >
-                AI 표정 변환기
+                {APP_TAGLINE}
               </button>
             </div>
             <AuthBar

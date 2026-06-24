@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/brand";
 import { getCreditPackageById } from "./credit-packages";
 import {
   readPaymentOrder,
@@ -34,7 +35,7 @@ export async function createPaymentOrder(input: {
     packageId: pkg.id,
     amount: pkg.priceKrw,
     credits: pkg.credits,
-    orderName: `IRR ${pkg.name} ${pkg.credits}회`,
+    orderName: `${APP_NAME} ${pkg.name} ${pkg.credits}회`,
     status: "pending",
     createdAt: Date.now(),
   };

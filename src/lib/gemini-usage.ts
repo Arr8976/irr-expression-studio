@@ -70,7 +70,7 @@ export function logGeminiUsage(record: GeminiUsageRecord, presetId: string) {
     estimatedCostKrw: Math.round(record.estimatedCostUsd * 1400),
   };
 
-  console.info("[IRR Usage]", JSON.stringify(payload));
+  console.info("[JIKYU Usage]", JSON.stringify(payload));
 
   if (process.env.LOG_USAGE_JSONL === "true") {
     try {
@@ -82,7 +82,7 @@ export function logGeminiUsage(record: GeminiUsageRecord, presetId: string) {
         "utf8",
       );
     } catch (error) {
-      console.warn("[IRR Usage] failed to write usage.jsonl", error);
+      console.warn("[JIKYU Usage] failed to write usage.jsonl", error);
     }
   }
 }

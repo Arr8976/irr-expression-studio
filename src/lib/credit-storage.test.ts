@@ -63,7 +63,7 @@ describe("credit storage sqlite", () => {
       packageId: "starter",
       amount: 1990,
       credits: 10,
-      orderName: "IRR Starter",
+      orderName: "JIKYU Starter",
       status: "paid",
       paymentKey: "pay_123",
       createdAt: Date.now(),

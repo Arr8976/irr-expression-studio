@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { SiteFooter } from "@/components/SiteFooter";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +16,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IRR Expression Studio",
-  description:
-    "AI로 얼굴 표정을 프리셋별로 변환하는 베타 서비스",
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
+  },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
   robots: { index: false, follow: false },
 };
 

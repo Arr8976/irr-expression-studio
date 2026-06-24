@@ -1,0 +1,29 @@
+---
+description: JIKYU 브랜드명·톤·제품 네이밍 (공식 런칭)
+alwaysApply: true
+---
+
+# JIKYU 브랜드
+
+## 이름
+- **JIKYU** (自給 / じきゅう) — 自給自足(자급자족)에서 유래
+- 의미: 필요한 것은 **스스로 조달한다**
+- 조합 예: **JIKYU Studio** (현재 제품), **JIKYU DEV**, 도메인 **JIKYU.io**
+
+## 톤 & 이미지
+- 직관적, 단단함, 경쾌한 발음, 미래지향
+- 독립적이고 강력한 **자급형 플랫폼** 인상
+- 한국어 **지큐** 연상: 지구(Earth), IQ(지능), 지켜준다(Protect) — 확장성 좋음
+
+## 슬로건 (참고)
+**JIKYU: The Self-Sustaining Ecosystem.** — 스스로 채워나가는 생태계
+
+## 제품 맥락
+- **JIKYU Studio**: AI 얼굴 표정 변환 웹 서비스 (Next.js, Vercel)
+- 사용자가 이미지·표정·크레딧을 **스스로** 다루는 창작 워크플로
+
+## 코드·카피 가이드
+- 공식 표기: **JIKYU Studio** (`src/lib/brand.ts`의 `APP_NAME` 등 사용)
+- 구명칭 **IRR Expression Studio** / **irr-expression** 은 사용자 대면 문구에 쓰지 않음
+- 내부 쿠키·Redis 키(`irr_sid`, `irr:credits` 등)는 **데이터 호환** 때문에 유지 — 리네이밍하지 말 것
+- UI·메타·결제 주문명·README는 JIKYU 톤 유지; “베타/임시”보다 정식 서비스 톤 선호

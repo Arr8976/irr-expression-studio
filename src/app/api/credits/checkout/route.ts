@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getPaymentAvailability } from "@/lib/credit-checkout";
 import { syncCreditAccount } from "@/lib/credit-account";
 import { createPaymentOrder } from "@/lib/payment-orders";
-import { getTossClientKey } from "@/lib/toss-payments";
+import { getAppBaseUrl, getTossClientKey } from "@/lib/toss-payments";
 import { getCreditStatus } from "@/lib/user-credits";
 import { jsonWithSessionCookie } from "@/lib/request-quota-context";
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       creditAccountKey: account.accountKey,
       packageId: String(body?.packageId ?? ""),
     });
-    const origin = request.nextUrl.origin;
+    const baseUrl = getAppBaseUrl(request.nextUrl.origin);
 
     return jsonWithSessionCookie(
       {
@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
           orderId: order.orderId,
           orderName: order.orderName,
           amount: order.amount,
-          successUrl: `${origin}/payment/success`,
-          failUrl: `${origin}/payment/fail`,
+          successUrl: `${baseUrl}/payment/success`,
+          failUrl: `${baseUrl}/payment/fail`,
         },
         ...(await getCreditStatus(account.accountKey)),
       },

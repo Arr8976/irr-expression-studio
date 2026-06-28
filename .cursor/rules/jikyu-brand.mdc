@@ -8,7 +8,11 @@ alwaysApply: true
 ## 이름
 - **JIKYU** (自給 / じきゅう) — 自給自足(자급자족)에서 유래
 - 의미: 필요한 것은 **스스로 조달한다**
-- 조합 예: **JIKYU Studio** (현재 제품), **JIKYU DEV**, 도메인 **JIKYU.io**
+- 조합 예: **JIKYU Studio** (현재 제품), **JIKYU DEV**, 도메인 **jikyu.studio**
+
+## 도메인
+- **공식 프로덕션:** `https://jikyu.studio` (`src/lib/brand.ts` → `APP_PRODUCTION_URL`)
+- Vercel 백업: `irr-expression-studio.vercel.app`
 
 ## 톤 & 이미지
 - 직관적, 단단함, 경쾌한 발음, 미래지향

@@ -7,7 +7,7 @@ import Link from "next/link";
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   Configuration:
-    "로그인 서버 설정 오류입니다. 이미 로그인된 상태가 아니라 실패한 결과예요. Vercel의 AUTH_SECRET·AUTH_URL, 카카오 Redirect URI를 확인한 뒤 다시 시도해 주세요.",
+    "로그인 서버 설정 오류입니다. AUTH_URL이 https://jikyu.studio 인지, Google·카카오 Redirect URI가 일치하는지 확인한 뒤 다시 시도해 주세요.",
   AccessDenied: "로그인이 취소되었거나 권한이 거부되었습니다.",
   OAuthSignin: "로그인 요청을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   OAuthCallback: "카카오 인증 후 처리에 실패했습니다. Redirect URI가 일치하는지 확인해 주세요.",

@@ -1,3 +1,5 @@
+import { APP_PRODUCTION_URL } from "@/lib/brand";
+
 const TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
 
 export type TossPaymentResult = {
@@ -31,6 +33,9 @@ export function getAppBaseUrl(fallbackOrigin?: string) {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (configured) return configured.replace(/\/$/, "");
   if (fallbackOrigin) return fallbackOrigin.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "production") {
+    return APP_PRODUCTION_URL;
+  }
   return "http://localhost:3000";
 }
 

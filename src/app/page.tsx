@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
-import { APP_NAME, APP_SLUG, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME, APP_SLUG, APP_TAGLINE, APP_HERO_TITLE, APP_HERO_DESCRIPTION, APP_LAUNCH_BADGE } from "@/lib/brand";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
 import { dataUrlToObjectUrl, revokeObjectUrl } from "@/lib/data-url-to-object-url";
 import { prepareImageForUpload } from "@/lib/prepare-upload-image";
@@ -415,23 +415,29 @@ export default function Home() {
         <header className="mb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm text-emerald-400">{APP_NAME}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-emerald-400">{APP_NAME}</p>
+                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-200">
+                  {APP_LAUNCH_BADGE}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => window.location.assign("/")}
                 className="mt-2 block text-left text-3xl font-bold tracking-tight transition hover:text-emerald-300"
                 title="처음으로"
               >
-                {APP_TAGLINE}
+                {APP_HERO_TITLE}
               </button>
+              <p className="mt-1 text-lg text-slate-400">{APP_TAGLINE}</p>
             </div>
             <AuthBar
               googleEnabled={authProviders.google}
               kakaoEnabled={authProviders.kakao}
             />
           </div>
-          <p className="mt-3 max-w-3xl text-slate-300">
-            AI를 이용한 표정 변경 프롬프트로 원본을 유지하며 표정 변환을 시도합니다.
+          <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-300">
+            {APP_HERO_DESCRIPTION}
           </p>
         </header>
 

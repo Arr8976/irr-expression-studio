@@ -29,15 +29,15 @@ describe("getAppBaseUrl", () => {
   it("falls back to jikyu.studio in production when env is unset", () => {
     process.env = { ...originalEnv, NODE_ENV: "production" };
     delete process.env.NEXT_PUBLIC_APP_URL;
-    expect(getAppBaseUrl()).toBe("https://jikyu.studio");
+    expect(getAppBaseUrl()).toBe("https://www.jikyu.studio");
   });
 
   it("prefers NEXT_PUBLIC_APP_URL when set", () => {
     process.env = {
       ...originalEnv,
       NODE_ENV: "production",
-      NEXT_PUBLIC_APP_URL: "https://jikyu.studio",
+      NEXT_PUBLIC_APP_URL: "https://www.jikyu.studio",
     };
-    expect(getAppBaseUrl()).toBe("https://jikyu.studio");
+    expect(getAppBaseUrl()).toBe("https://www.jikyu.studio");
   });
 });

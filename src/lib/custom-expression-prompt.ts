@@ -1,4 +1,8 @@
 import { buildFacsPrompt, FACS_UNITS, type FacsPreset } from "./facs-presets";
+import {
+  DEFAULT_EXPRESSION_INTENSITY,
+  intensityPromptLine,
+} from "./expression-intensity";
 
 export const CUSTOM_PROMPT_MAX_LENGTH = 300;
 export const CUSTOM_PROMPT_MIN_LENGTH = 2;
@@ -70,6 +74,7 @@ function formatAuHints(auCodes: string[]): string {
 export function buildCustomExpressionPrompt(input: {
   customPrompt: string;
   preset?: Pick<FacsPreset, "label" | "auCodes"> | null;
+  intensity?: number;
 }): string {
   const lines = [
     "Facial expression edit for the uploaded portrait.",
@@ -87,13 +92,17 @@ export function buildCustomExpressionPrompt(input: {
   lines.push(
     `User-requested expression (combine multiple cues if helpful): ${input.customPrompt}`,
     "Apply a natural, clean expression change. Return only the edited image.",
+    intensityPromptLine(input.intensity ?? DEFAULT_EXPRESSION_INTENSITY),
   );
 
   return lines.join("\n");
 }
 
-export function buildPresetExpressionPrompt(auCodes: string[]): string {
-  return buildFacsPrompt(auCodes);
+export function buildPresetExpressionPrompt(
+  auCodes: string[],
+  intensity?: number,
+): string {
+  return buildFacsPrompt(auCodes, intensity);
 }
 
 export type TransformExpressionSource = "preset" | "custom" | "hybrid";

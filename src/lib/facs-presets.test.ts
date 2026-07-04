@@ -22,5 +22,13 @@ describe("facs presets", () => {
     const prompt = buildFacsPrompt(["AU85"]);
     expect(prompt).toContain("표정 변경 FACS AU85");
     expect(prompt).toContain("Tongue Out");
+    expect(prompt).toContain("Expression intensity:");
+  });
+
+  it("includes intensity guidance in FACS prompt", () => {
+    const subtle = buildFacsPrompt(["AU12"], 15);
+    const strong = buildFacsPrompt(["AU12"], 90);
+    expect(subtle).toContain("subtle");
+    expect(strong).toContain("strong");
   });
 });

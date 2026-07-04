@@ -1,3 +1,8 @@
+import {
+  DEFAULT_EXPRESSION_INTENSITY,
+  intensityPromptLine,
+} from "./expression-intensity";
+
 export type FacsPresetTier = "stable" | "beta";
 
 export type FacsPreset = {
@@ -211,7 +216,7 @@ export function getPresetById(id: string): FacsPreset | undefined {
   return EXPRESSION_PRESETS.find((p) => p.id === id);
 }
 
-export function buildFacsPrompt(auCodes: string[]): string {
+export function buildFacsPrompt(auCodes: string[], intensity?: number): string {
   const codes = auCodes.join(" ");
   const details = auCodes
     .map((code) => `${code} (${FACS_UNITS[code] ?? code})`)
@@ -222,5 +227,6 @@ export function buildFacsPrompt(auCodes: string[]): string {
     "Change only the facial expression using these FACS Action Units:",
     details,
     "Do not distort the face structure. Apply a clean expression change.",
+    intensityPromptLine(intensity ?? DEFAULT_EXPRESSION_INTENSITY),
   ].join(" ");
 }

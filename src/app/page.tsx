@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { AuthBar } from "@/components/AuthBar";
 import { CreditShop } from "@/components/CreditShop";
+import { IntensitySlider } from "@/components/IntensitySlider";
 import { MAX_PINNED, PinnedTray, type PinnedResult } from "@/components/PinnedTray";
 import { APP_NAME, APP_SLUG, APP_TAGLINE, APP_HERO_TITLE, APP_HERO_DESCRIPTION, APP_LAUNCH_BADGE } from "@/lib/brand";
 import { CUSTOM_PROMPT_MAX_LENGTH } from "@/lib/custom-expression-prompt";
@@ -12,8 +13,13 @@ import { prepareImageForUpload } from "@/lib/prepare-upload-image";
 import { readApiJson } from "@/lib/read-api-response";
 import { SFW_UPLOAD_NOTICE } from "@/lib/gemini-safety";
 import { EXPRESSION_PRESETS } from "@/lib/facs-presets";
+import {
+  DEFAULT_EXPRESSION_INTENSITY,
+  parseExpressionIntensity,
+} from "@/lib/expression-intensity";
 
 const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const INTENSITY_STORAGE_KEY = "jikyu-expression-intensity";
 
 const ESTIMATED_SECONDS = { min: 15, max: 45 };
 
@@ -49,6 +55,7 @@ type TransformResponse = {
   billingSource?: "free" | "credit";
   expressionSource?: "preset" | "custom" | "hybrid";
   customPrompt?: string;
+  intensity?: number;
   preset: {
     id: string;
     label: string;
@@ -77,6 +84,7 @@ export default function Home() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [customPromptEnabled, setCustomPromptEnabled] = useState(false);
   const [combinePresetWithCustom, setCombinePresetWithCustom] = useState(true);
+  const [intensity, setIntensity] = useState(DEFAULT_EXPRESSION_INTENSITY);
   const [authProviders, setAuthProviders] = useState({
     google: false,
     kakao: false,
@@ -170,6 +178,25 @@ export default function Home() {
   }, [sessionStatus, session?.user?.accountKey]);
 
   useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(INTENSITY_STORAGE_KEY);
+      if (stored != null) {
+        setIntensity(parseExpressionIntensity(stored));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(INTENSITY_STORAGE_KEY, String(intensity));
+    } catch {
+      // ignore storage errors
+    }
+  }, [intensity]);
+
+  useEffect(() => {
     return () => {
       transformAbortRef.current?.abort();
       revokeObjectUrl(previewUrl);
@@ -183,7 +210,7 @@ export default function Home() {
 
   useEffect(() => {
     setLockedSeed(null);
-  }, [presetId, file, isCustomPromptActive]);
+  }, [presetId, file, isCustomPromptActive, intensity]);
 
   useEffect(() => {
     if (!canUseCustomPrompt && customPromptEnabled) {
@@ -325,6 +352,8 @@ export default function Home() {
     if (seedToUse != null) {
       form.append("seed", String(seedToUse));
     }
+
+    form.append("intensity", String(intensity));
 
     try {
       const res = await fetch("/api/transform", {
@@ -639,6 +668,14 @@ export default function Home() {
                 {quotaHint}
               </p>
             )}
+
+            <div className="mt-4">
+              <IntensitySlider
+                value={intensity}
+                onChange={setIntensity}
+                disabled={loading}
+              />
+            </div>
 
             {lockedSeed != null && (
                   <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-200">

@@ -44,6 +44,7 @@ import {
   jsonWithSessionCookie,
 } from "@/lib/request-quota-context";
 import { createTransformSeed, parseTransformSeed } from "@/lib/transform-seed";
+import { parseExpressionIntensity } from "@/lib/expression-intensity";
 
 export const runtime = "nodejs";
 
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
     const presetId = String(form.get("presetId") ?? "").trim();
     const customPrompt = normalizeCustomPrompt(form.get("customPrompt"));
     const requestedSeed = parseTransformSeed(form.get("seed"));
+    const intensity = parseExpressionIntensity(form.get("intensity"));
     const expressionSource = resolveExpressionSource({
       customPrompt,
       presetId: presetId || null,
@@ -209,10 +211,11 @@ export async function POST(request: NextRequest) {
     const mimeType = file.type || "image/png";
     const prompt =
       expressionSource === "preset" && preset
-        ? buildPresetExpressionPrompt(preset.auCodes)
+        ? buildPresetExpressionPrompt(preset.auCodes, intensity)
         : buildCustomExpressionPrompt({
             customPrompt: customPrompt!,
             preset,
+            intensity,
           });
     const resultPreset = responsePreset(preset, customPrompt);
     const reference = await loadReferenceGrid();
@@ -320,6 +323,7 @@ export async function POST(request: NextRequest) {
         preset: resultPreset,
         expressionSource,
         customPrompt: customPrompt ?? undefined,
+        intensity,
         prompt,
         model,
         seed,

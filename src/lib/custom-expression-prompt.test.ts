@@ -29,6 +29,15 @@ describe("custom expression prompt", () => {
     expect(prompt).toContain("User-requested expression");
     expect(prompt).toContain("AU6");
     expect(prompt).toContain("미소인데 눈썹은 화난 것처럼");
+    expect(prompt).toContain("Expression intensity:");
+  });
+
+  it("includes intensity guidance in custom prompt", () => {
+    const prompt = buildCustomExpressionPrompt({
+      customPrompt: "살짝 웃음",
+      intensity: 20,
+    });
+    expect(prompt).toContain("subtle");
   });
 
   it("resolves expression source", () => {
